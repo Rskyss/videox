@@ -1,0 +1,34 @@
+# 部署时排除的文件和目录
+
+# 开发文档
+docs/
+截图/
+DEPLOYMENT.md
+上传文件.md
+
+# 开发工具
+.claude/
+__pycache__/
+*.pyc
+deploy_package/
+
+# 系统文件
+.DS_Store
+.gitignore
+
+# 平台特定文件
+start.bat
+
+# 测试文件
+test_*.py
+
+# 可选文件(手动决定是否上传)
+# cookies.txt
+
+# 打包文件
+*.tar.gz
+*.zip
+
+# 部署脚本(服务器不需要)
+make_deploy.sh
+.deployignore

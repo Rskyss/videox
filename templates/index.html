@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>视频下载工具</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>视频下载工具</h1>
+            <p class="subtitle">支持 YouTube、Twitter/X、B站等主流平台</p>
+        </header>
+
+        <main>
+            <!-- 环境检测提示 -->
+            <div id="env-status" class="status-box" style="display: none;"></div>
+
+            <!-- 视频链接输入 -->
+            <div class="form-group">
+                <label for="video-url">视频链接</label>
+                <input
+                    type="text"
+                    id="video-url"
+                    placeholder="请输入视频链接（支持抖音、YouTube、B站、Twitter等）"
+                    autocomplete="off"
+                >
+            </div>
+
+            <!-- 下载按钮 -->
+            <button id="download-btn" class="btn-download" disabled>解析视频</button>
+
+            <!-- 状态消息 -->
+            <div id="message" class="message" style="display: none;"></div>
+        </main>
+
+        <footer>
+            <p>基于 yt-dlp 构建 | 仅供学习使用</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# Logs
+*.log
+*.log.*
+
+# Backup files
+*.backup
+*.bak
+*.bak2
+*.bak3
+*_backup_*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment
+.env
+.env.local
+
+# Cookies and sensitive data
+cookies.txt
+
+# Deployment
+deploy.log
+nginx_config.txt
+
+# OS
+.DS_Store
+Thumbs.db

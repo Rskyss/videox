@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Parsing Prodigy</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="app-container">
+        <div class="content-wrapper">
+            <!-- 头部标题 -->
+            <header class="app-header">
+                <h1 class="app-title" data-i18n="title">Video Parsing Prodigy</h1>
+                <p class="app-subtitle" data-i18n="subtitle">Paste video link to easily parse and download</p>
+            </header>
+
+            <!-- 主内容卡片 -->
+            <main class="main-card">
+                <!-- 环境检测提示 -->
+                <div id="env-status" class="alert-box" style="display: none;"></div>
+
+                <!-- URL输入表单 -->
+                <form id="url-form" class="url-form">
+                    <div class="input-wrapper">
+                        <div class="input-container">
+                            <div class="input-icon">
+                                <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+                                </svg>
+                            </div>
+                        <input
+                            type="text"
+                            id="video-url"
+                            class="video-input"
+                            placeholder="Paste video link here..."
+                            data-i18n-placeholder="input-placeholder"
+                            autocomplete="off"
+                        >
+                            <button type="button" id="clear-btn" class="clear-btn" style="display: none;">
+                                <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <button type="submit" id="parse-btn" class="parse-btn" disabled>
+                            <span class="btn-text" data-i18n="parse-btn">Parse</span>
+                            <svg class="spinner" style="display: none;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="spinner-track" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="spinner-path" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </form>
+
+                <!-- 错误提示 -->
+                <div id="error-message" class="error-alert" style="display: none;"></div>
+
+                <!-- 视频结果 -->
+                <div id="video-result" class="video-result" style="display: none;">
+                    <div class="video-content">
+                        <img id="video-thumbnail" class="video-thumbnail" src="" alt="Video thumbnail">
+                        <div class="video-details">
+                            <span id="video-platform" class="video-platform"></span>
+                            <h2 id="video-title" class="video-title"></h2>
+                            <div class="video-meta">
+                                <div class="meta-item">
+                                    <p class="meta-label" data-i18n="duration">Duration</p>
+                                    <p id="video-duration" class="meta-value">--</p>
+                                </div>
+                                <div class="meta-item">
+                                    <p class="meta-label" data-i18n="size">Size</p>
+                                    <p id="video-size" class="meta-value">--</p>
+                                </div>
+                            </div>
+                            <button id="download-btn" class="download-btn">
+                                <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                                </svg>
+                                <span data-i18n="download-btn">Download Video</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            <!-- 支持的平台 -->
+            <section class="platforms-section">
+                <p class="platforms-description" data-i18n="platforms-support">Support video analysis for the following platforms. The types are constantly increasing.</p>
+                <div class="platforms-container">
+                    <div class="platform-item">
+                        <img src="/icon/抖音.png" alt="Douyin" class="platform-icon">
+                        <span class="platform-name">抖音</span>
+                    </div>
+                    <div class="platform-item">
+                        <img src="/icon/bilbil.png" alt="Bilibili" class="platform-icon">
+                        <span class="platform-name">bilibili</span>
+                    </div>
+                    <div class="platform-item">
+                        <img src="/icon/小红书.png" alt="Xiaohongshu" class="platform-icon">
+                        <span class="platform-name">小红书</span>
+                    </div>
+                    <div class="platform-item">
+                        <img src="/icon/youtube.png" alt="YouTube" class="platform-icon">
+                        <span class="platform-name">youtube</span>
+                    </div>
+                    <div class="platform-item">
+                        <img src="/icon/tiktok.png" alt="TikTok" class="platform-icon">
+                        <span class="platform-name">tiktok</span>
+                    </div>
+                    <div class="platform-item">
+                        <img src="/icon/Twitter.png" alt="Twitter/X" class="platform-icon">
+                        <span class="platform-name">twitter/x</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 微信二维码区域 -->
+            <section id="wechat-section" class="wechat-section">
+                <div class="wechat-content">
+                    <button id="close-wechat-btn" class="close-wechat-btn" aria-label="Close">
+                        <img src="/icon/icon.svg" alt="Close" class="close-icon">
+                    </button>
+                    <img src="/icon/qrcode_for_gh_a849626ae29d_258.jpg" alt="WeChat QR Code" class="wechat-qrcode">
+                    <p class="wechat-description">关注AGI杂物箱，一起落地更多项目，让AI成为你的稳定红利</p>
+                </div>
+            </section>
+
+            <!-- 底部 -->
+            <footer class="app-footer">
+                <div class="language-switcher">
+                    <button id="lang-zh" class="lang-btn active" data-lang="zh">中文</button>
+                    <span class="lang-divider">|</span>
+                    <button id="lang-en" class="lang-btn" data-lang="en">English</button>
+                </div>
+                <p data-i18n="footer-info">Built with yt-dlp | For educational use only</p>
+                <p class="disclaimer" data-i18n="footer-disclaimer">We do not store or cache any video content on this website. All videos and images belong to their respective owners and source websites.</p>
+            </footer>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    
+    <!-- 百度统计 -->
+    <script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "https://hm.baidu.com/hm.js?eec1e94a2b0f2bfad01b7d5c30c6137c";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+</body>
+</html>

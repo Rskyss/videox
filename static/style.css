@@ -1,0 +1,615 @@
+/* 全局重置和基础样式 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: linear-gradient(-45deg, #0f172a, #111827, #1e293b, #111827);
+    background-size: 400% 400%;
+    animation: gradientBreathing 8s ease infinite;
+    min-height: 100vh;
+    padding: 1rem;
+    padding-top: 6rem;
+    padding-bottom: 6rem;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 应用容器 */
+.app-container {
+    width: 100%;
+    max-width: 42rem;
+    margin: 0 auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.content-wrapper {
+    width: 100%;
+    flex: 1;
+}
+
+/* 头部 */
+.app-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    position: relative;
+}
+
+.app-title {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #fff;
+    margin-bottom: 0.5rem;
+}
+
+.app-subtitle {
+    font-size: 1.125rem;
+    color: #9ca3af;
+}
+
+/* 主卡片 */
+.main-card {
+    background: rgba(31, 41, 55, 0.5);
+    backdrop-filter: blur(12px);
+    border: 1px solid #374151;
+    border-radius: 0.75rem;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    padding: 2rem;
+}
+
+/* 警告框 */
+.alert-box {
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.875rem;
+    max-height: 200px;
+    overflow: hidden;
+    transition: all 0.25s ease-in-out;
+    opacity: 1;
+}
+
+.alert-box.hiding {
+    max-height: 0;
+    margin-bottom: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    opacity: 0;
+}
+
+.alert-box.success {
+    background: rgba(16, 185, 129, 0.1);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.alert-box.warning {
+    background: rgba(251, 191, 36, 0.1);
+    color: #fbbf24;
+    border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.alert-box.error {
+    background: rgba(239, 68, 68, 0.1);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* URL输入表单 */
+.url-form {
+    margin-bottom: 1.5rem;
+}
+
+.input-wrapper {
+    display: flex;
+}
+
+.input-container {
+    flex: 1;
+    position: relative;
+    display: flex;
+}
+
+.input-icon {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    padding-left: 0.75rem;
+    pointer-events: none;
+}
+
+.input-icon .icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    color: #9ca3af;
+}
+
+.video-input {
+    flex: 1;
+    width: 100%;
+    background: #374151;
+    border: 1px solid #4b5563;
+    border-radius: 0.5rem 0 0 0.5rem;
+    padding: 0.75rem 3rem 0.75rem 2.5rem;
+    color: #e5e7eb;
+    font-size: 1rem;
+    transition: all 0.2s;
+}
+
+.video-input::placeholder {
+    color: #6b7280;
+}
+
+.video-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+}
+
+.video-input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.clear-btn {
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #4b5563;
+    border: none;
+    border-radius: 50%;
+    width: 1.5rem;
+    height: 1.5rem;
+    padding: 0;
+    cursor: pointer;
+    color: #9ca3af;
+    transition: all 0.2s;
+    z-index: 2;
+}
+
+.clear-btn:hover {
+    background: #6b7280;
+    color: #f87171;
+}
+
+.clear-btn .icon {
+    width: 1rem;
+    height: 1rem;
+}
+
+.parse-btn {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    background: #2563eb;
+    color: white;
+    font-weight: bold;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 0 0.5rem 0.5rem 0;
+    cursor: pointer;
+    transition: all 0.3s;
+    flex-shrink: 0;
+    margin-left: 0;
+}
+
+.parse-btn:hover:not(:disabled) {
+    background: #1d4ed8;
+}
+
+.parse-btn:disabled {
+    background: rgba(37, 99, 235, 0.5);
+    cursor: not-allowed;
+}
+
+.parse-btn:focus {
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.5);
+}
+
+/* 加载动画 */
+.spinner {
+    width: 1.25rem;
+    height: 1.25rem;
+    animation: spin 1s linear infinite;
+}
+
+.spinner-track {
+    opacity: 0.25;
+}
+
+.spinner-path {
+    opacity: 0.75;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* 呼吸渐变动画 */
+@keyframes gradientBreathing {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+/* 错误提示 */
+.error-alert {
+    background: rgba(220, 38, 38, 0.5);
+    color: #fca5a5;
+    border: 1px solid #dc2626;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    margin-top: 1.5rem;
+    text-align: center;
+    font-size: 0.875rem;
+}
+
+/* 视频结果 */
+.video-result {
+    margin-top: 2rem;
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.video-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.video-thumbnail {
+    width: 100%;
+    aspect-ratio: 1 / 1;     /* 固定1:1方形比例 */
+    object-fit: cover;       /* 裁剪超出部分 */
+    object-position: center; /* 居中裁剪 */
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.video-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.video-platform {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #60a5fa;
+    text-transform: uppercase;
+}
+
+.video-title {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: #fff;
+    margin: 0;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.video-meta {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin: 0.5rem 0;
+}
+
+.meta-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.meta-label {
+    font-size: 0.75rem;
+    color: #9ca3af;
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.25rem;
+}
+
+.meta-value {
+    font-size: 1rem;
+    font-weight: bold;
+    color: #fff;
+}
+
+.download-btn {
+    width: 100%;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    background: #2563eb;
+    color: white;
+    font-weight: bold;
+    padding: 0.75rem 1rem;
+    border: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-top: 0.5rem;
+}
+
+.download-btn:hover {
+    background: #1d4ed8;
+}
+
+.download-btn:focus {
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.5);
+}
+
+.download-btn .icon {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+/* 微信二维码区域 */
+.wechat-section {
+    width: 100%;
+    max-width: 900px;
+    margin: calc(2rem + 120px) auto 1.5rem;
+    padding: 1.5rem 1rem;
+    text-align: center;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.wechat-section.visible {
+    display: flex;
+}
+
+.wechat-section.hiding {
+    opacity: 0;
+    transform: translateY(-20px);
+}
+
+.wechat-content {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.wechat-qrcode {
+    width: 120px;
+    height: 120px;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.wechat-description {
+    color: #6b7280;
+    font-size: 0.875rem;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.close-wechat-btn {
+    position: absolute;
+    top: -10px;
+    right: 90px;
+    width: 24px;
+    height: 24px;
+    background: transparent;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    padding: 0;
+    z-index: 10;
+}
+
+.close-wechat-btn:hover {
+    transform: scale(1.1);
+    opacity: 0.8;
+}
+
+.close-wechat-btn .close-icon {
+    width: 24px;
+    height: 24px;
+}
+
+/* 底部 */
+.app-footer {
+    position: fixed;
+    bottom: 20px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    padding: 1.5rem 1rem;
+    z-index: 10;
+}
+
+.language-switcher {
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.lang-btn {
+    background: transparent;
+    border: none;
+    color: #ffffff;
+    font-size: 0.875rem;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    transition: all 0.2s;
+    opacity: 0.6;
+}
+
+.lang-btn:hover {
+    opacity: 1;
+}
+
+.lang-btn.active {
+    opacity: 1;
+    font-weight: bold;
+}
+
+.lang-divider {
+    color: #6b7280;
+    font-size: 0.875rem;
+}
+
+.app-footer p {
+    color: #6b7280;
+    font-size: 0.875rem;
+    margin: 0.25rem 0;
+}
+
+.app-footer .disclaimer {
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+/* 响应式设计 */
+@media (min-width: 640px) {
+    .app-title {
+        font-size: 3rem;
+    }
+
+    .main-card {
+        padding: 2rem;
+    }
+
+    .video-content {
+        flex-direction: row;
+        gap: 1.5rem;
+    }
+
+    .video-thumbnail {
+        width: 33.333333%;
+        aspect-ratio: 1 / 1;  /* PC端也保持1:1方形 */
+        flex-shrink: 0;
+    }
+
+    .video-details {
+        flex: 1;
+    }
+
+    .download-btn {
+        margin-top: auto;
+    }
+}
+
+@media (max-width: 639px) {
+    .app-title {
+        font-size: 2rem;
+    }
+
+    .main-card {
+        padding: 1.5rem;
+    }
+}
+
+/* 平台支持部分 */
+.platforms-section {
+    width: 100%;
+    max-width: 900px;
+    margin: 2rem auto 1.5rem;
+    padding: 0 1rem;
+}
+
+.platforms-description {
+    color: #6b7280;
+    font-size: 0.95rem;
+    text-align: center;
+    margin-bottom: calc(1.5rem - 20px);
+    line-height: 1.5;
+}
+
+.platforms-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: calc(2.5rem + 15px);
+    flex-wrap: wrap;
+    padding: 1.5rem;
+}
+
+.platform-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.platform-icon {
+    width: 20px;
+    height: 20px;
+}
+
+.platform-name {
+    color: #cbd5e1;
+    font-size: 0.85rem;
+    text-align: center;
+    font-weight: 500;
+}
+
+@media (max-width: 639px) {
+    .platforms-container {
+        gap: 1.5rem;
+        padding: 1rem;
+    }
+    
+    .platform-icon {
+        width: 24px;
+        height: 24px;
+    }
+    
+    .platform-name {
+        font-size: 0.75rem;
+    }
+}

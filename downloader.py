@@ -336,8 +336,6 @@ class VideoDownloader:
 
         # 常见错误模式匹配
         error_patterns = {
-            'cookies': '该平台需要登录凭证，请尝试其他视频',
-            'login': '该平台需要登录凭证，请尝试其他视频',
             'private': '视频为私有或已删除',
             'copyright': '视频因版权问题无法下载',
             'geo': '该视频在当前地区不可用',
@@ -681,6 +679,7 @@ class VideoDownloader:
     def _resolve_cookie_file(self, url: str) -> Optional[str]:
         """
         如果用户提供了 cookies.txt，则为需要登录的平台自动附加 --cookies
+        只有当cookies.txt包含目标平台的cookies时才使用
         """
         if not self._platform_requires_cookies(url):
             return None
@@ -689,8 +688,29 @@ class VideoDownloader:
         if not path:
             return None
         try:
-            if path.exists() and path.stat().st_size > 0:
-                return str(path)
+            if not (path.exists() and path.stat().st_size > 0):
+                return None
+
+            # 检查cookies.txt中是否包含目标平台的cookies
+            domain_hint = self._cookie_domain_hint(url)
+            if not domain_hint:
+                return None
+
+            # 读取cookies文件内容,检查是否包含目标域名的cookies
+            with open(path, 'r', encoding='utf-8', errors='ignore') as f:
+                for line in f:
+                    # 跳过注释和空行
+                    if line.startswith('#') or not line.strip():
+                        continue
+                    # Netscape cookie格式: domain flag path secure expiration name value
+                    parts = line.strip().split('\t')
+                    if len(parts) >= 7:
+                        cookie_domain = parts[0]
+                        # 精确匹配域名(例如 .youtube.com 或 youtube.com)
+                        if cookie_domain == f'.{domain_hint}' or cookie_domain == domain_hint or cookie_domain.endswith(f'.{domain_hint}'):
+                            return str(path)
+
+            return None  # cookies.txt中没有目标平台的cookies,不使用
         except OSError:
             return None
         return None

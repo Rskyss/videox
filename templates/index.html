@@ -1,10 +1,89 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Video Parsing Prodigy</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+    
+    <!-- SEO基础Meta标签 - 强化AI热词 -->
+    <meta name="description" content="VideoX - AI智能视频解析下载工具，免费在线使用。支持抖音、B站、小红书、YouTube、TikTok、Twitter等平台。AI驱动一键解析，快速下载无水印高清视频。">
+    <meta name="keywords" content="AI视频下载,AI视频解析,人工智能视频工具,视频下载,抖音下载,B站下载,YouTube下载,TikTok下载,小红书视频,Twitter视频,无水印视频下载,AI工具,在线AI工具">
+    <meta name="author" content="VideoX - AI工具箱">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#6366f1">
+    <meta name="application-name" content="VideoX AI视频解析工具">
+    
+    <!-- Open Graph标签（社交媒体分享优化）- 强化AI概念 -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="VideoX - AI智能视频解析下载工具 | 免费在线AI工具箱">
+    <meta property="og:description" content="AI驱动的智能视频解析工具，支持抖音、B站、小红书、YouTube、TikTok、Twitter等平台。一键解析，快速下载无水印视频。">
+    <meta property="og:url" content="https://www.aifun.store">
+    <meta property="og:image" content="https://www.aifun.store/static/favicon.png">
+    <meta property="og:site_name" content="VideoX AI工具箱">
+    <meta property="og:locale" content="zh_CN">
+    <meta property="og:locale:alternate" content="en_US">
+    
+    <!-- Twitter Card标签 - 强化AI热词 -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="VideoX - AI Video Downloader Tool | Free AI Tools">
+    <meta name="twitter:description" content="AI-powered video parser and downloader. Support TikTok, YouTube, Twitter, Douyin, Bilibili, Xiaohongshu and more. Free online AI tools.">
+    <meta name="twitter:image" content="https://www.aifun.store/static/favicon.png">
+    
+    <!-- Canonical链接 -->
+    <link rel="canonical" href="https://www.aifun.store/">
+    
+    <!-- 多语言支持 -->
+    <link rel="alternate" hreflang="zh-CN" href="https://www.aifun.store/?lang=zh">
+    <link rel="alternate" hreflang="en" href="https://www.aifun.store/?lang=en">
+    <link rel="alternate" hreflang="x-default" href="https://www.aifun.store/">
+    
+    <!-- JSON-LD结构化数据 - 强化AI定位 -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "VideoX AI视频解析工具",
+      "alternateName": "VideoX AI Video Downloader",
+      "url": "https://www.aifun.store",
+      "description": "AI智能视频解析下载工具，支持抖音、B站、小红书、YouTube、TikTok、Twitter等多平台。利用人工智能技术实现快速解析和无水印视频下载。",
+      "applicationCategory": "MultimediaApplication",
+      "applicationSubCategory": "AI工具",
+      "operatingSystem": "Any",
+      "browserRequirements": "Requires JavaScript. Requires HTML5.",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "CNY",
+        "availability": "https://schema.org/InStock"
+      },
+      "featureList": [
+        "AI智能视频解析",
+        "抖音短视频无水印下载",
+        "B站视频下载",
+        "小红书视频下载",
+        "YouTube视频下载",
+        "TikTok无水印下载",
+        "Twitter/X视频下载",
+        "多平台支持",
+        "免费在线使用"
+      ],
+      "screenshot": "https://www.aifun.store/static/favicon.png",
+      "author": {
+        "@type": "Organization",
+        "name": "AI工具箱",
+        "description": "专注于AI驱动的实用工具开发"
+      },
+      "keywords": "AI视频下载,AI视频解析,人工智能工具,视频下载工具,抖音下载,B站下载,YouTube下载"
+    }
+    </script>
+    
+    <!-- 额外的AI相关Meta标签 -->
+    <meta property="article:tag" content="AI工具">
+    <meta property="article:tag" content="人工智能">
+    <meta property="article:tag" content="视频下载">
+    <meta property="article:tag" content="视频解析">
 </head>
 <body>
     <div class="app-container">

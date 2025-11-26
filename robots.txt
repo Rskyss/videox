@@ -1,0 +1,29 @@
+# VideoX - AI智能视频解析工具
+# AI工具箱 - 为您提供最好的AI驱动工具
+
+User-agent: *
+Allow: /
+Allow: /icon/
+Allow: /static/
+
+# 禁止爬取API端点和敏感路径
+Disallow: /parse-video
+Disallow: /download
+Disallow: /proxy-thumbnail
+Disallow: /proxy-download
+
+# Sitemap位置
+Sitemap: https://www.aifun.store/sitemap.xml
+
+# 百度爬虫特殊配置
+User-agent: Baiduspider
+Allow: /
+Allow: /icon/
+Allow: /static/
+Crawl-delay: 1
+
+# Google爬虫特殊配置
+User-agent: Googlebot
+Allow: /
+Allow: /icon/
+Allow: /static/

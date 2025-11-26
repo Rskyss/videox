@@ -47,7 +47,7 @@ def get_platform_referer(url: str) -> str:
     Returns:
         平台对应的Referer URL
     """
-    if 'douyin.com' in url or 'douyinvod.com' in url:
+    if "douyin.com" in url or "douyinvod.com" in url or "aweme.snssdk.com" in url or "zjcdn.com" in url or "douyinpic.com" in url:
         return 'https://www.douyin.com/'
     elif 'xhscdn.com' in url or 'xiaohongshu.com' in url:
         return 'https://www.xiaohongshu.com/'
@@ -594,12 +594,24 @@ def download_with_ytdlp(video_url: str, filename: str):
         }), 500
 
 
+
+# SEO路由 - robots.txt和sitemap.xml
+@app.route('/robots.txt')
+def robots():
+    """提供robots.txt文件供搜索引擎爬虫读取"""
+    return send_from_directory('.', 'robots.txt', mimetype='text/plain')
+
+@app.route('/sitemap.xml')
+def sitemap():
+    """提供sitemap.xml文件供搜索引擎索引"""
+    return send_from_directory('.', 'sitemap.xml', mimetype='application/xml')
+
 if __name__ == '__main__':
-    # 开发模式运行
+    # 生产环境运行
     app.run(
-        debug=True,
+        debug=False,  # 生产环境必须关闭debug
         host='0.0.0.0',  # 监听所有网络接口
         port=5001,  # 端口设置为5003
         threaded=True,   # 启用多线程
-        use_reloader=True  # 启用自动重载
+        use_reloader=False  # 生产环境关闭自动重载
     )

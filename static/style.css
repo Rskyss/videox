@@ -394,11 +394,15 @@ body {
     margin: calc(2rem + 120px) auto 1.5rem;
     padding: 1.5rem 1rem;
     text-align: center;
-    display: flex;
+    display: none;
     flex-direction: column;
     align-items: center;
     gap: 1rem;
     transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.wechat-section.visible {
+    display: flex;
 }
 
 .wechat-section.hiding {

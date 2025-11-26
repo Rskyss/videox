@@ -498,10 +498,11 @@ function checkWechatSection() {
     // 检查 localStorage 中是否已经设置了关闭标记
     const isWechatClosed = localStorage.getItem('wechat-qrcode-closed');
     
-    if (isWechatClosed === 'true') {
-        // 如果已经关闭过，直接隐藏整个区域
-        wechatSection.style.display = 'none';
+    if (isWechatClosed !== 'true') {
+        // 如果没有关闭过，显示二维码区域
+        wechatSection.classList.add('visible');
     }
+    // 如果已关闭，保持默认的 display: none
 }
 
 // 处理关闭微信二维码

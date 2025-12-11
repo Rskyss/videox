@@ -82,7 +82,7 @@ const elements = {
 // 翻译函数
 function translate(lang) {
     appState.currentLang = lang;
-    
+
     // 翻译所有带data-i18n属性的元素
     document.querySelectorAll('[data-i18n]').forEach(element => {
         const key = element.getAttribute('data-i18n');
@@ -90,7 +90,7 @@ function translate(lang) {
             element.textContent = translations[lang][key];
         }
     });
-    
+
     // 翻译placeholder
     document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
         const key = element.getAttribute('data-i18n-placeholder');
@@ -98,13 +98,13 @@ function translate(lang) {
             element.placeholder = translations[lang][key];
         }
     });
-    
+
     // 更新按钮激活状态
     document.querySelectorAll('.lang-btn').forEach(btn => {
         btn.classList.remove('active');
     });
     document.querySelector(`[data-lang="${lang}"]`).classList.add('active');
-    
+
     // 保存语言设置到localStorage
     localStorage.setItem('preferred-lang', lang);
 }
@@ -114,21 +114,21 @@ function isMobileDevice() {
     // 检测 userAgent
     const userAgent = navigator.userAgent || navigator.vendor || window.opera;
     const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
-    
+
     // 检测触摸屏和屏幕宽度
     const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     const isSmallScreen = window.innerWidth <= 768;
-    
+
     return mobileRegex.test(userAgent) || (isTouchDevice && isSmallScreen);
 }
 
 // 显示移动端限制提示
 function showMobileRestriction() {
     const lang = localStorage.getItem('preferred-lang') || 'en';
-    const message = lang === 'zh' 
-        ? '目前不支持移动端H5访问，请访问PC/Mac页面' 
+    const message = lang === 'zh'
+        ? '目前不支持移动端H5访问，请访问PC/Mac页面'
         : 'Mobile H5 access is not currently supported. Please visit PC/Mac page';
-    
+
     // 创建遮罩层
     const overlay = document.createElement('div');
     overlay.style.cssText = `
@@ -144,7 +144,7 @@ function showMobileRestriction() {
         justify-content: center;
         padding: 2rem;
     `;
-    
+
     // 创建提示框
     const messageBox = document.createElement('div');
     messageBox.style.cssText = `
@@ -156,7 +156,7 @@ function showMobileRestriction() {
         text-align: center;
         box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
     `;
-    
+
     // 添加图标
     const icon = document.createElement('div');
     icon.innerHTML = `
@@ -165,7 +165,7 @@ function showMobileRestriction() {
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" style="stroke-width: 2;" />
         </svg>
     `;
-    
+
     // 添加文字
     const text = document.createElement('p');
     text.textContent = message;
@@ -176,12 +176,12 @@ function showMobileRestriction() {
         margin: 0;
         font-weight: 500;
     `;
-    
+
     messageBox.appendChild(icon);
     messageBox.appendChild(text);
     overlay.appendChild(messageBox);
     document.body.appendChild(overlay);
-    
+
     // 禁用页面滚动
     document.body.style.overflow = 'hidden';
 }
@@ -193,14 +193,14 @@ document.addEventListener('DOMContentLoaded', () => {
         showMobileRestriction();
         return; // 不继续执行其他初始化
     }
-    
+
     // 从localStorage获取语言设置
     const savedLang = localStorage.getItem('preferred-lang') || 'en';
     translate(savedLang);
-    
-    // 检查微信二维码是否已被关闭
-    checkWechatSection();
-    
+
+    // 检查侧边通知
+    checkSideNotification();
+
     checkEnvironment();
     bindEvents();
 });
@@ -211,15 +211,15 @@ function bindEvents() {
     elements.videoUrl.addEventListener('input', handleInput);
     elements.clearBtn.addEventListener('click', handleClear);
     elements.downloadBtn.addEventListener('click', handleDownload);
-    
+
     // 语言切换事件
     document.getElementById('lang-zh').addEventListener('click', () => translate('zh'));
     document.getElementById('lang-en').addEventListener('click', () => translate('en'));
-    
-    // 微信二维码关闭按钮事件
-    const closeWechatBtn = document.getElementById('close-wechat-btn');
-    if (closeWechatBtn) {
-        closeWechatBtn.addEventListener('click', handleCloseWechat);
+
+    // 侧边通知关闭按钮事件
+    const closeSideBtn = document.getElementById('close-side-btn');
+    if (closeSideBtn) {
+        closeSideBtn.addEventListener('click', handleCloseSideNotification);
     }
 }
 
@@ -235,14 +235,14 @@ async function checkEnvironment() {
         } else {
             // 检查是否已经显示过环境检查成功的提示
             const hasSeenEnvCheck = localStorage.getItem('env-check-seen');
-            
+
             // 只有第一次访问时才显示提示
             if (!hasSeenEnvCheck) {
                 showEnvAlert(translations[appState.currentLang]['env-check-passed'], 'success');
-                
+
                 // 标记用户已经看过提示
                 localStorage.setItem('env-check-seen', 'true');
-                
+
                 setTimeout(() => {
                     hideEnvAlert();
                 }, 3000);
@@ -261,10 +261,10 @@ async function installYtdlp() {
 
         if (data.success) {
             showEnvAlert(translations[appState.currentLang]['install-success'], 'success');
-            
+
             // 标记用户已经看过提示（安装成功后也算看过）
             localStorage.setItem('env-check-seen', 'true');
-            
+
             setTimeout(() => {
                 hideEnvAlert();
             }, 3000);
@@ -287,7 +287,7 @@ function showEnvAlert(message, type = 'warning') {
 function hideEnvAlert() {
     // 添加hiding类触发动画
     elements.envStatus.classList.add('hiding');
-    
+
     // 动画结束后真正隐藏元素
     setTimeout(() => {
         elements.envStatus.style.display = 'none';
@@ -298,7 +298,7 @@ function hideEnvAlert() {
 // 处理输入
 function handleInput() {
     const url = elements.videoUrl.value.trim();
-    
+
     // 更新按钮状态
     elements.parseBtn.disabled = !url || appState.isLoading;
 }
@@ -315,7 +315,7 @@ function handleClear() {
 // 处理解析
 async function handleExtract(e) {
     e.preventDefault();
-    
+
     const url = elements.videoUrl.value.trim();
 
     if (!url) {
@@ -364,7 +364,7 @@ function setLoading(loading) {
     appState.isLoading = loading;
     elements.parseBtn.disabled = loading || !elements.videoUrl.value.trim();
     elements.videoUrl.disabled = loading;
-    
+
     if (loading) {
         elements.btnText.textContent = translations[appState.currentLang]['parsing'];
         elements.spinner.style.display = 'block';
@@ -391,15 +391,15 @@ function clearError() {
 function displayVideoInfo(videoInfo) {
     // 显示清空按钮（只在有解析结果时显示）
     elements.clearBtn.style.display = 'flex';
-    
+
 
     // 更新缩略图
     if (videoInfo.thumbnail && videoInfo.thumbnail.trim() !== '') {
         // 判断是否需要代理(只有B站、小红书等需要Referer验证的平台才使用代理)
         const needsProxy = videoInfo.thumbnail.includes('hdslb.com') ||
-                          videoInfo.thumbnail.includes('bilivideo.com') ||
-                          videoInfo.thumbnail.includes('xhscdn.com') ||
-                          videoInfo.thumbnail.includes('xiaohongshu.com');
+            videoInfo.thumbnail.includes('bilivideo.com') ||
+            videoInfo.thumbnail.includes('xhscdn.com') ||
+            videoInfo.thumbnail.includes('xiaohongshu.com');
 
         if (needsProxy) {
             // B站、小红书等平台使用代理URL,解决Referer防盗链问题
@@ -463,13 +463,25 @@ function handleDownload() {
 
     const videoInfo = appState.videoInfo;
     const isDash = videoInfo.is_dash || false;
-    
+
     // 构建文件名
     const filename = `${videoInfo.title}.${videoInfo.ext || 'mp4'}`;
-    
-    // 构建代理下载URL
+
+    // YouTube特殊处理：直接打开新页面下载（因为YouTube URL需要浏览器直接访问获取ipbypass）
+    const isYouTube = videoInfo.platform === 'YouTube' ||
+                      (videoInfo.url && videoInfo.url.includes('googlevideo.com'));
+
+    if (isYouTube && !isDash) {
+        // YouTube非DASH格式：打开新标签页让用户直接下载
+        window.open(videoInfo.url, '_blank');
+        showEnvAlert(translations[appState.currentLang]['download-started'], 'success');
+        setTimeout(() => { hideEnvAlert(); }, 3000);
+        return;
+    }
+
+    // 其他平台或DASH格式：使用服务器代理下载
     const proxyUrl = `/proxy-download?video_url=${encodeURIComponent(videoInfo.url)}&filename=${encodeURIComponent(filename)}&is_dash=${isDash}`;
-    
+
     // 触发下载
     const link = document.createElement('a');
     link.href = proxyUrl;
@@ -490,33 +502,38 @@ function handleDownload() {
     }, 3000);
 }
 
-// 检查微信二维码区域是否应该显示
-function checkWechatSection() {
-    const wechatSection = document.getElementById('wechat-section');
-    if (!wechatSection) return;
-    
-    // 检查 localStorage 中是否已经设置了关闭标记
-    const isWechatClosed = localStorage.getItem('wechat-qrcode-closed');
-    
-    if (isWechatClosed === 'true') {
-        // 如果已经关闭过，直接隐藏整个区域
-        wechatSection.style.display = 'none';
+// 检查侧边通知是否应该显示
+function checkSideNotification() {
+    // 如果是移动端，不显示侧边栏
+    if (window.innerWidth <= 1024) return;
+
+    const sideNotification = document.getElementById('side-notification');
+    if (!sideNotification) return;
+
+    // 检查 localStorage 中是否已经设置了关闭标记（版本号变更时重新显示）
+    const notificationVersion = 'v2';  // 更新内容时修改此版本号
+    const isClosed = localStorage.getItem('side-notification-closed') === notificationVersion;
+
+    if (!isClosed) {
+        sideNotification.style.display = 'flex';
     }
 }
 
-// 处理关闭微信二维码
-function handleCloseWechat() {
-    const wechatSection = document.getElementById('wechat-section');
-    if (!wechatSection) return;
-    
-    // 添加淡出动画
-    wechatSection.classList.add('hiding');
-    
-    // 动画结束后隐藏元素并保存状态
+// 处理关闭侧边通知
+function handleCloseSideNotification() {
+    const sideNotification = document.getElementById('side-notification');
+    if (!sideNotification) return;
+
+    // 添加退出动画类
+    sideNotification.classList.add('hiding');
+
+    // 动画结束后隐藏元素
     setTimeout(() => {
-        wechatSection.style.display = 'none';
-        
-        // 在 localStorage 中标记已关闭
-        localStorage.setItem('wechat-qrcode-closed', 'true');
-    }, 300); // 与 CSS transition 时间一致
+        sideNotification.style.display = 'none';
+        sideNotification.classList.remove('hiding');
+
+        // 在 localStorage 中标记已关闭（保存版本号）
+        const notificationVersion = 'v2';  // 与 checkSideNotification 中保持一致
+        localStorage.setItem('side-notification-closed', notificationVersion);
+    }, 500); // 与 CSS animation 时间一致
 }

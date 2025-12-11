@@ -1,0 +1,23 @@
+宝塔面板配置说明：
+
+1. 这是一个Flask应用（纯后端）
+   - 域名: video.aisoup.cn
+   - 根目录: $CURRENT_DIR
+   - 运行目录: $CURRENT_DIR
+
+2. 配置反向代理
+   - 代理名称: v
+   - 目标URL: http://127.0.0.1:$PORT_BACKEND
+   - 代理目录: /
+   - 发送域名: $host
+
+3. 启动应用
+   cd $CURRENT_DIR
+   pm2 start start_backend.sh --name v --interpreter bash
+   
+4. 查看日志
+   pm2 logs v
+   
+5. 停止/重启
+   pm2 stop v
+   pm2 restart v

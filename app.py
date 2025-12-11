@@ -17,8 +17,9 @@ from flask import Flask, render_template, request, jsonify, Response, stream_wit
 import requests
 from urllib.parse import unquote, quote
 
+from simple_tracker import tracker
 # 本地模块导入
-from downloader import VideoDownloader
+from downloader import VideoDownloader, YTDLP_CMD
 from utils import check_ytdlp, install_ytdlp
 
 
@@ -47,7 +48,7 @@ def get_platform_referer(url: str) -> str:
     Returns:
         平台对应的Referer URL
     """
-    if 'douyin.com' in url or 'douyinvod.com' in url:
+    if "douyin.com" in url or "douyinvod.com" in url or "aweme.snssdk.com" in url or "zjcdn.com" in url or "douyinpic.com" in url:
         return 'https://www.douyin.com/'
     elif 'xhscdn.com' in url or 'xiaohongshu.com' in url:
         return 'https://www.xiaohongshu.com/'
@@ -61,6 +62,24 @@ def get_platform_referer(url: str) -> str:
         return 'https://www.tiktok.com/'
     else:
         return 'https://www.bilibili.com/'  # 默认B站
+
+def detect_platform(url):
+    """从URL识别平台"""
+    url_lower = url.lower()
+    if "bilibili.com" in url_lower or "b23.tv" in url_lower:
+        return "bilibili"
+    elif "youtube.com" in url_lower or "youtu.be" in url_lower:
+        return "youtube"
+    elif "douyin.com" in url_lower:
+        return "douyin"
+    elif "xiaohongshu.com" in url_lower or "xhslink.com" in url_lower:
+        return "xiaohongshu"
+    elif "twitter.com" in url_lower or "x.com" in url_lower:
+        return "twitter"
+    elif "tiktok.com" in url_lower:
+        return "tiktok"
+    return None
+
 
 
 @app.route('/')
@@ -168,6 +187,13 @@ def download_video():
     result = downloader.download(url, directory, cookies_from_browser)
 
     if result['success']:
+        # 统计下载
+        try:
+            platform = detect_platform(url)
+            if platform:
+                tracker.track(platform)
+        except:
+            pass
         return jsonify(result)
     else:
         return jsonify(result), 400
@@ -285,6 +311,13 @@ def parse_video():
     result = downloader.parse_video_info(url)
 
     if result['success']:
+        # 统计下载
+        try:
+            platform = detect_platform(url)
+            if platform:
+                tracker.track(platform)
+        except:
+            pass
         return jsonify(result)
     else:
         return jsonify(result), 400
@@ -474,55 +507,71 @@ def download_with_ytdlp(video_url: str, filename: str):
         # 使用简单的文件名避免特殊字符问题
         safe_filename = f"bili_{int(time.time())}_{os.getpid()}"
         temp_file_base = os.path.join(temp_dir, safe_filename)
-        
-        # 构建yt-dlp命令
-        cmd = [
-            "yt-dlp",
-            video_url,
-            "-o", f"{temp_file_base}.%(ext)s",
-            "--merge-output-format", "mp4",  # 强制输出mp4格式
-            "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "--referer", "https://www.bilibili.com/"
-        ]
-        
-        # 如果 cookies 文件存在，添加 cookies 参数
-        cookie_file = downloader.local_cookie_file
-        if cookie_file and os.path.exists(str(cookie_file)):
-            cmd.extend(["--cookies", str(cookie_file)])
-            app.logger.info(f"使用 cookies 文件: {cookie_file}")
-            sys.stderr.write(f"[INFO] 使用 cookies 文件: {cookie_file}\n")
-            sys.stderr.flush()
-        else:
-            app.logger.warning(f"cookies 文件不存在: {cookie_file}")
-            sys.stderr.write(f"[WARNING] cookies 文件不存在: {cookie_file}\n")
-            sys.stderr.flush()
-        
-        app.logger.info(f"执行命令: {' '.join(cmd[:5])}...")
-        sys.stderr.write(f"[INFO] 执行命令: {' '.join(cmd[:5])}...\n")
-        sys.stderr.flush()
-        
-        # 执行下载
-        result = subprocess.run(
-            cmd,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            universal_newlines=True,
-            timeout=300  # 5分钟超时
-        )
-        
-        app.logger.info(f"yt-dlp 返回码: {result.returncode}")
-        sys.stderr.write(f"[INFO] yt-dlp 返回码: {result.returncode}\n")
-        sys.stderr.flush()
-        
-        if result.stdout:
-            app.logger.info(f"yt-dlp 输出: {result.stdout[:200]}")
-            sys.stderr.write(f"[INFO] yt-dlp 输出: {result.stdout[:200]}\n")
-            sys.stderr.flush()
-        
+
+        is_youtube = 'youtube.com' in video_url.lower() or 'youtu.be' in video_url.lower()
+        max_retries = 3 if is_youtube else 1
+        result = None
+
+        # 重试循环
+        for attempt in range(max_retries):
+            # 构建yt-dlp命令
+            cmd = [
+                YTDLP_CMD,
+                video_url,
+                "-o", f"{temp_file_base}.%(ext)s",
+                "--merge-output-format", "mp4",  # 强制输出mp4格式
+                "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "--referer", "https://www.bilibili.com/"
+            ]
+
+            # YouTube 视频添加代理支持
+            if is_youtube:
+                cmd.extend([
+                    '--extractor-args', 'youtube:player_client=android,web',
+                    '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                ])
+                proxy = downloader.proxy_manager.get_next_proxy()
+                if proxy:
+                    cmd.extend(['--proxy', proxy])
+                    app.logger.info(f"[尝试 {attempt + 1}/{max_retries}] 使用代理: {proxy[:30]}...")
+
+            # 如果 cookies 文件存在，添加 cookies 参数
+            cookie_file = downloader.local_cookie_file
+            if cookie_file and os.path.exists(str(cookie_file)):
+                cmd.extend(["--cookies", str(cookie_file)])
+
+            # 执行下载
+            result = subprocess.run(
+                cmd,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                universal_newlines=True,
+                timeout=300  # 5分钟超时
+            )
+
+            # 如果成功,跳出循环
+            if result.returncode == 0:
+                break
+
+            # 检查是否是反机器人错误
+            error_msg = result.stderr if result.stderr else result.stdout
+            is_bot_check = 'bot' in error_msg.lower() or 'sign in' in error_msg.lower()
+
+            app.logger.warning(f"[尝试 {attempt + 1}/{max_retries}] 下载失败 - 是否bot错误: {is_bot_check}")
+
+            # 如果是最后一次尝试或不是反机器人错误,抛出异常
+            if attempt == max_retries - 1:
+                app.logger.error(f"[尝试 {attempt + 1}/{max_retries}] 已达最大重试次数,下载失败")
+                raise Exception(f"yt-dlp download failed: {result.stderr[:500]}")
+
+            if not is_bot_check:
+                app.logger.error(f"[尝试 {attempt + 1}/{max_retries}] 非bot错误,直接失败: {error_msg[:100]}")
+                raise Exception(f"yt-dlp download failed: {result.stderr[:500]}")
+
+            # 否则继续重试(会自动切换到下一个代理)
+            app.logger.warning(f"[尝试 {attempt + 1}/{max_retries}] Bot错误,切换代理重试...")
+
         if result.returncode != 0:
-            app.logger.error(f"yt-dlp 错误: {result.stderr}")
-            sys.stderr.write(f"[ERROR] yt-dlp 错误: {result.stderr}\n")
-            sys.stderr.flush()
-            raise Exception(f"yt-dlp download failed: {result.stderr[:500]}")
+            raise Exception(f"yt-dlp download failed after {max_retries} attempts")
         
         # 找到实际生成的文件（yt-dlp 会添加扩展名）
         temp_file = f"{temp_file_base}.mp4"
@@ -594,12 +643,34 @@ def download_with_ytdlp(video_url: str, filename: str):
         }), 500
 
 
+
+# SEO路由 - robots.txt和sitemap.xml
+@app.route('/robots.txt')
+def robots():
+    """提供robots.txt文件供搜索引擎爬虫读取"""
+    return send_from_directory('.', 'robots.txt', mimetype='text/plain')
+
+@app.route('/sitemap.xml')
+def sitemap():
+    """提供sitemap.xml文件供搜索引擎索引"""
+    return send_from_directory('.', 'sitemap.xml', mimetype='application/xml')
+
 if __name__ == '__main__':
-    # 开发模式运行
+    # 生产环境运行
     app.run(
-        debug=True,
+        debug=False,  # 生产环境必须关闭debug
         host='0.0.0.0',  # 监听所有网络接口
         port=5001,  # 端口设置为5003
         threaded=True,   # 启用多线程
-        use_reloader=True  # 启用自动重载
+        use_reloader=False  # 生产环境关闭自动重载
     )
+
+# Google验证
+@app.route('/googlebb599f357f33fc9d.html')
+def google_verification():
+    return 'google-site-verification: googlebb599f357f33fc9d.html'
+
+# Google验证
+@app.route('/googlebb599f357f33fc9d.html')
+def google_verification():
+    return 'google-site-verification: googlebb599f357f33fc9d.html'

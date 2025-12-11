@@ -1,11 +1,96 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
+
 <head>
+    <meta name="google-site-verification" content="uxFT4CpENAbw9OnOQGglCbvkh5LV6B0nNhKJAz2Rum0" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Video Parsing Prodigy</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+
+    <!-- SEO基础Meta标签 - 强化AI热词 -->
+    <meta name="description"
+        content="VideoX - AI智能视频解析下载工具，免费在线使用。支持抖音、B站、小红书、YouTube、TikTok、Twitter等平台。AI驱动一键解析，快速下载无水印高清视频。">
+    <meta name="keywords"
+        content="AI视频下载,AI视频解析,人工智能视频工具,视频下载,抖音下载,B站下载,YouTube下载,TikTok下载,小红书视频,Twitter视频,无水印视频下载,AI工具,在线AI工具,Video Downloader, TikTok Downloader, YouTube Downloader, No Watermark, AI Video Tool, Douyin Downloader, Bilibili Downloader">
+    <meta name="author" content="VideoX - AI工具箱">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#6366f1">
+    <meta name="application-name" content="VideoX AI视频解析工具">
+
+    <!-- Open Graph标签（社交媒体分享优化）- 强化AI概念 -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="VideoX - AI智能视频解析下载工具 | 免费在线AI工具箱">
+    <meta property="og:description" content="AI驱动的智能视频解析工具，支持抖音、B站、小红书、YouTube、TikTok、Twitter等平台。一键解析，快速下载无水印视频。">
+    <meta property="og:url" content="https://www.aifun.store">
+    <meta property="og:image" content="https://www.aifun.store/static/favicon.png">
+    <meta property="og:site_name" content="VideoX AI工具箱">
+    <meta property="og:locale" content="zh_CN">
+    <meta property="og:locale:alternate" content="en_US">
+
+    <!-- Twitter Card标签 - 强化AI热词 -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="VideoX - AI Video Downloader Tool | Free AI Tools">
+    <meta name="twitter:description"
+        content="AI-powered video parser and downloader. Support TikTok, YouTube, Twitter, Douyin, Bilibili, Xiaohongshu and more. Free online AI tools.">
+    <meta name="twitter:image" content="https://www.aifun.store/static/favicon.png">
+
+    <!-- Canonical链接 -->
+    <link rel="canonical" href="https://www.aifun.store/">
+
+    <!-- 多语言支持 -->
+    <link rel="alternate" hreflang="zh-CN" href="https://www.aifun.store/?lang=zh">
+    <link rel="alternate" hreflang="en" href="https://www.aifun.store/?lang=en">
+    <link rel="alternate" hreflang="x-default" href="https://www.aifun.store/">
+
+    <!-- JSON-LD结构化数据 - 强化AI定位 -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "VideoX AI视频解析工具",
+      "alternateName": "VideoX AI Video Downloader",
+      "url": "https://www.aifun.store",
+      "description": "AI智能视频解析下载工具，支持抖音、B站、小红书、YouTube、TikTok、Twitter等多平台。利用人工智能技术实现快速解析和无水印视频下载。",
+      "applicationCategory": "MultimediaApplication",
+      "applicationSubCategory": "AI工具",
+      "operatingSystem": "Any",
+      "browserRequirements": "Requires JavaScript. Requires HTML5.",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "CNY",
+        "availability": "https://schema.org/InStock"
+      },
+      "featureList": [
+        "AI智能视频解析",
+        "抖音短视频无水印下载",
+        "B站视频下载",
+        "小红书视频下载",
+        "YouTube视频下载",
+        "TikTok无水印下载",
+        "Twitter/X视频下载",
+        "多平台支持",
+        "免费在线使用"
+      ],
+      "screenshot": "https://www.aifun.store/static/favicon.png",
+      "author": {
+        "@type": "Organization",
+        "name": "AI工具箱",
+        "description": "专注于AI驱动的实用工具开发"
+      },
+      "keywords": "AI视频下载,AI视频解析,人工智能工具,视频下载工具,抖音下载,B站下载,YouTube下载"
+    }
+    </script>
+
+    <!-- 额外的AI相关Meta标签 -->
+    <meta property="article:tag" content="AI工具">
+    <meta property="article:tag" content="人工智能">
+    <meta property="article:tag" content="视频下载">
+    <meta property="article:tag" content="视频解析">
 </head>
+
 <body>
     <div class="app-container">
         <div class="content-wrapper">
@@ -25,29 +110,30 @@
                     <div class="input-wrapper">
                         <div class="input-container">
                             <div class="input-icon">
-                                <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+                                <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                    stroke-width="1.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
                                 </svg>
                             </div>
-                        <input
-                            type="text"
-                            id="video-url"
-                            class="video-input"
-                            placeholder="Paste video link here..."
-                            data-i18n-placeholder="input-placeholder"
-                            autocomplete="off"
-                        >
+                            <input type="text" id="video-url" class="video-input" placeholder="Paste video link here..."
+                                data-i18n-placeholder="input-placeholder" autocomplete="off">
                             <button type="button" id="clear-btn" class="clear-btn" style="display: none;">
-                                <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                    stroke-width="2" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </button>
                         </div>
                         <button type="submit" id="parse-btn" class="parse-btn" disabled>
                             <span class="btn-text" data-i18n="parse-btn">Parse</span>
-                            <svg class="spinner" style="display: none;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle class="spinner-track" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="spinner-path" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            <svg class="spinner" style="display: none;" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                viewBox="0 0 24 24">
+                                <circle class="spinner-track" cx="12" cy="12" r="10" stroke="currentColor"
+                                    stroke-width="4"></circle>
+                                <path class="spinner-path" fill="currentColor"
+                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                </path>
                             </svg>
                         </button>
                     </div>
@@ -74,8 +160,10 @@
                                 </div>
                             </div>
                             <button id="download-btn" class="download-btn">
-                                <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                                <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                    stroke-width="1.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
                                 </svg>
                                 <span data-i18n="download-btn">Download Video</span>
                             </button>
@@ -86,7 +174,8 @@
 
             <!-- 支持的平台 -->
             <section class="platforms-section">
-                <p class="platforms-description" data-i18n="platforms-support">Support video analysis for the following platforms. The types are constantly increasing.</p>
+                <p class="platforms-description" data-i18n="platforms-support">Support video analysis for the following
+                    platforms. The types are constantly increasing.</p>
                 <div class="platforms-container">
                     <div class="platform-item">
                         <img src="/icon/抖音.png" alt="Douyin" class="platform-icon">
@@ -115,16 +204,35 @@
                 </div>
             </section>
 
-            <!-- 微信二维码区域 -->
-            <section id="wechat-section" class="wechat-section">
-                <div class="wechat-content">
-                    <button id="close-wechat-btn" class="close-wechat-btn" aria-label="Close">
-                        <img src="/icon/icon.svg" alt="Close" class="close-icon">
-                    </button>
-                    <img src="/icon/qrcode_for_gh_a849626ae29d_258.jpg" alt="WeChat QR Code" class="wechat-qrcode">
-                    <p class="wechat-description">关注AGI杂物箱，一起落地更多项目，让AI成为你的稳定红利</p>
+            <!-- 侧边通知卡片 -->
+            <div id="side-notification" class="side-notification" style="display: none;">
+                <button id="close-side-btn" class="close-side-btn" aria-label="Close">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                        stroke="currentColor" class="icon">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+
+                <div class="side-content">
+                    <div class="side-text">
+                        <p class="highlight">⚠️ AI 实验产品说明</p>
+                        <p>本工具目前处于实验阶段，主要用于技术探索和交流</p>
+                        <p class="warning-text"><strong>YouTube 高清视频因官方分离音视频并限制获取，暂不支持。</strong>本工具现可正常下载 360p。</p>
+                        <p>✅ 其他平台（抖音、B站、小红书、Twitter/x、tiktok）解析不受影响，可正常使用。</p>
+                        <p>有问题记得关注私信哦~</p>
+                    </div>
+
+                    <div class="side-qrcode">
+                        <img src="/icon/qrcode_for_gh_a849626ae29d_258.jpg" alt="AGI杂物箱" class="qrcode-img">
+                        <div class="qrcode-info">
+                            <p class="qrcode-title">关注公众号 <strong>AGI杂物箱</strong></p>
+                            <p class="qrcode-slogan">一起落地更多项目，让AI成为你的稳定红利</p>
+                        </div>
+                    </div>
                 </div>
-            </section>
+            </div>
+
+
 
             <!-- 底部 -->
             <footer class="app-footer">
@@ -134,22 +242,24 @@
                     <button id="lang-en" class="lang-btn" data-lang="en">English</button>
                 </div>
                 <p data-i18n="footer-info">Built with yt-dlp | For educational use only</p>
-                <p class="disclaimer" data-i18n="footer-disclaimer">We do not store or cache any video content on this website. All videos and images belong to their respective owners and source websites.</p>
+                <p class="disclaimer" data-i18n="footer-disclaimer">We do not store or cache any video content on this
+                    website. All videos and images belong to their respective owners and source websites.</p>
             </footer>
         </div>
     </div>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
-    
+
     <!-- 百度统计 -->
     <script>
-var _hmt = _hmt || [];
-(function() {
-  var hm = document.createElement("script");
-  hm.src = "https://hm.baidu.com/hm.js?eec1e94a2b0f2bfad01b7d5c30c6137c";
-  var s = document.getElementsByTagName("script")[0]; 
-  s.parentNode.insertBefore(hm, s);
-})();
-</script>
+        var _hmt = _hmt || [];
+        (function () {
+            var hm = document.createElement("script");
+            hm.src = "https://hm.baidu.com/hm.js?eec1e94a2b0f2bfad01b7d5c30c6137c";
+            var s = document.getElementsByTagName("script")[0];
+            s.parentNode.insertBefore(hm, s);
+        })();
+    </script>
 </body>
+
 </html>

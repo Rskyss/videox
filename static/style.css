@@ -240,6 +240,7 @@ body {
     from {
         transform: rotate(0deg);
     }
+
     to {
         transform: rotate(360deg);
     }
@@ -250,9 +251,11 @@ body {
     0% {
         background-position: 0% 50%;
     }
+
     50% {
         background-position: 100% 50%;
     }
+
     100% {
         background-position: 0% 50%;
     }
@@ -281,6 +284,7 @@ body {
         opacity: 0;
         transform: translateY(10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -295,9 +299,12 @@ body {
 
 .video-thumbnail {
     width: 100%;
-    aspect-ratio: 1 / 1;     /* 固定1:1方形比例 */
-    object-fit: cover;       /* 裁剪超出部分 */
-    object-position: center; /* 居中裁剪 */
+    aspect-ratio: 1 / 1;
+    /* 固定1:1方形比例 */
+    object-fit: cover;
+    /* 裁剪超出部分 */
+    object-position: center;
+    /* 居中裁剪 */
     border-radius: 0.5rem;
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
 }
@@ -394,11 +401,15 @@ body {
     margin: calc(2rem + 120px) auto 1.5rem;
     padding: 1.5rem 1rem;
     text-align: center;
-    display: flex;
+    display: none;
     flex-direction: column;
     align-items: center;
     gap: 1rem;
     transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.wechat-section.visible {
+    display: flex;
 }
 
 .wechat-section.hiding {
@@ -527,7 +538,8 @@ body {
 
     .video-thumbnail {
         width: 33.333333%;
-        aspect-ratio: 1 / 1;  /* PC端也保持1:1方形 */
+        aspect-ratio: 1 / 1;
+        /* PC端也保持1:1方形 */
         flex-shrink: 0;
     }
 
@@ -599,13 +611,186 @@ body {
         gap: 1.5rem;
         padding: 1rem;
     }
-    
+
     .platform-icon {
         width: 24px;
         height: 24px;
     }
-    
+
     .platform-name {
         font-size: 0.75rem;
+    }
+}
+
+/* 侧边通知卡片 */
+.side-notification {
+    position: fixed;
+    left: 2rem;
+    bottom: 25vh;
+    /* 向上调整位置 */
+    width: 320px;
+    background: rgba(31, 41, 55, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    /* 翻转进入动画 */
+    animation: flipIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transform-origin: left center;
+    perspective: 1000px;
+    transition: all 0.3s ease;
+}
+
+.side-notification:hover {
+    transform: translateY(-5px) rotateY(2deg);
+    /* 悬停时微弱的3D效果 */
+    box-shadow: 0 25px 30px -5px rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.side-notification.hiding {
+    /* 翻转消失动画 */
+    animation: flipOut 0.6s cubic-bezier(0.6, -0.28, 0.735, 0.045) forwards;
+}
+
+@keyframes flipIn {
+    0% {
+        opacity: 0;
+        transform: perspective(1000px) rotateY(-90deg);
+    }
+
+    100% {
+        opacity: 1;
+        transform: perspective(1000px) rotateY(0deg);
+    }
+}
+
+@keyframes flipOut {
+    0% {
+        opacity: 1;
+        transform: perspective(1000px) rotateY(0deg);
+    }
+
+    100% {
+        opacity: 0;
+        transform: perspective(1000px) rotateY(-90deg);
+    }
+}
+
+.close-side-btn {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #9ca3af;
+    transition: all 0.2s;
+}
+
+.close-side-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+    transform: rotate(90deg);
+}
+
+.close-side-btn .icon {
+    width: 14px;
+    height: 14px;
+}
+
+.side-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.side-text {
+    font-size: 0.875rem;
+    color: #ACB2BA;
+    line-height: 1.6;
+}
+
+.side-text p {
+    margin-bottom: 0.5rem;
+}
+
+.side-text p:last-child {
+    margin-bottom: 0;
+}
+
+.side-text .warning-text {
+    color: #fff;
+}
+
+.side-text .highlight {
+    color: #fbbf24;
+    font-weight: bold;
+    font-size: 0.95rem;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.side-text strong {
+    color: #fff;
+}
+
+.side-qrcode {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 0.75rem;
+    border-radius: 0.75rem;
+}
+
+.qrcode-img {
+    width: 64px;
+    height: 64px;
+    border-radius: 0.5rem;
+}
+
+.qrcode-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.qrcode-title {
+    font-size: 0.9rem;
+    color: #e5e7eb;
+    margin: 0;
+}
+
+.qrcode-title strong {
+    color: #60a5fa;
+}
+
+.qrcode-slogan {
+    font-size: 0.75rem;
+    color: #9ca3af;
+    margin: 0;
+    line-height: 1.4;
+}
+
+/* 响应式调整 */
+@media (max-width: 1024px) {
+    .side-notification {
+        display: none !important;
+        /* 小屏幕不显示侧边栏，或者可以改为底部弹窗 */
     }
 }

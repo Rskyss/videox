@@ -536,7 +536,8 @@ def download_with_ytdlp(video_url: str, filename: str):
                     '--extractor-args', 'youtube:player_client=android,web',
                     '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
                 ])
-                proxy = downloader.proxy_manager.get_next_proxy()
+                proxy_env = os.environ.get('YOUTUBE_PROXY', '')
+                proxy = proxy_env.split(',')[0].strip() if proxy_env else None
                 if proxy:
                     cmd.extend(['--proxy', proxy])
                     app.logger.info(f"[尝试 {attempt + 1}/{max_retries}] 使用代理: {proxy[:30]}...")

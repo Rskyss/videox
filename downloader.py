@@ -71,67 +71,23 @@ DOUYIN_UA = (
 
 
 class ProxyManager:
-    # IPRoyal 静态住宅代理 (优先使用)
-    RESIDENTIAL_PROXY = "http://root123:320255kk@104.164.80.140:12323"
+    """代理管理器 - 从环境变量读取代理配置"""
 
-    def __init__(self):
-        self.api_token = os.environ.get('WEBSHARE_API_TOKEN', 'YOUR_WEBSHARE_API_TOKEN')
-        self.proxies: List[str] = []
-        self.last_update: Optional[datetime] = None
-        self.cache_duration = timedelta(hours=1)
-        self.current_index = 0
+    def get_residential_proxy(self) -> str:
+        """获取住宅代理 (YouTube专用)，从环境变量 IPROYAL_PROXY 读取"""
+        return os.environ.get('IPROYAL_PROXY', '')
 
-    def _fetch_proxies_from_api(self) -> List[str]:
-        if not self.api_token:
-            return []
-        try:
-            response = requests.get(
-                'https://proxy.webshare.io/api/v2/proxy/list/?mode=direct&page=1&page_size=25',
-                headers={'Authorization': f'Token {self.api_token}'},
-                timeout=10
-            )
-            if response.status_code == 200:
-                data = response.json()
-                proxies = [
-                    f"http://{p['username']}:{p['password']}@{p['proxy_address']}:{p['port']}"
-                    for p in data.get('results', [])
-                    if p.get('valid', True)
-                ]
-                return proxies
-        except Exception:
-            pass
-        return []
-
-    def _load_proxies_from_env(self) -> List[str]:
+    def get_proxies(self) -> List[str]:
+        """获取代理列表，从环境变量 YOUTUBE_PROXY 读取（逗号分隔）"""
         proxy_env = os.environ.get('YOUTUBE_PROXY', '')
         if proxy_env:
             return [p.strip() for p in proxy_env.split(',') if p.strip()]
         return []
 
-    def get_residential_proxy(self) -> str:
-        """获取住宅代理 (YouTube专用)"""
-        return self.RESIDENTIAL_PROXY
-    
-    def get_proxies(self) -> List[str]:
-        if self.proxies and self.last_update and \
-           datetime.now() - self.last_update < self.cache_duration:
-            return self.proxies
-        proxies = self._fetch_proxies_from_api()
-        if not proxies:
-            proxies = self._load_proxies_from_env()
-        if proxies:
-            self.proxies = proxies
-            self.last_update = datetime.now()
-            self.current_index = 0
-        return self.proxies
-    
     def get_next_proxy(self) -> Optional[str]:
+        """获取第一个可用代理"""
         proxies = self.get_proxies()
-        if not proxies:
-            return None
-        proxy = proxies[self.current_index % len(proxies)]
-        self.current_index += 1
-        return proxy
+        return proxies[0] if proxies else None
 
 
 class VideoDownloader:

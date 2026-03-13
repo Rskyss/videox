@@ -58,6 +58,8 @@ def get_platform_referer(url: str) -> str:
         return 'https://www.ixigua.com/'
     elif 'kuaishou.com' in url or 'kuaishoucdn.com' in url:
         return 'https://www.kuaishou.com/'
+    elif 'twimg.com' in url or 'twitter.com' in url or 'x.com' in url:
+        return 'https://twitter.com/'
     elif 'tiktok' in url.lower():
         return 'https://www.tiktok.com/'
     else:
@@ -468,9 +470,13 @@ def proxy_direct_download(video_url: str, filename: str):
         # 生成响应
         def generate():
             """流式传输视频数据"""
-            for chunk in resp.iter_content(chunk_size=1024 * 512):  # 512KB chunks
-                if chunk:
-                    yield chunk
+            try:
+                for chunk in resp.iter_content(chunk_size=1024 * 512):  # 512KB chunks
+                    if chunk:
+                        yield chunk
+            except Exception as e:
+                # CDN连接中断时捕获异常，防止Flask进程崩溃
+                app.logger.error(f"流式传输中断: {e}")
         
         # 对文件名进行URL编码（解决中文文件名问题）
         encoded_filename = quote(filename)

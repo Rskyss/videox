@@ -394,6 +394,23 @@ body {
     height: 1.25rem;
 }
 
+.download-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.85;
+}
+
+.download-btn.downloading {
+    background: #1e40af;
+}
+
+.download-btn.downloading .download-icon {
+    display: none;
+}
+
+.download-btn.downloading .download-spinner {
+    display: block !important;
+}
+
 /* 微信二维码区域 */
 .wechat-section {
     width: 100%;

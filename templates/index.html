@@ -160,10 +160,16 @@
                                 </div>
                             </div>
                             <button id="download-btn" class="download-btn">
-                                <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                <svg class="icon download-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
                                     stroke-width="1.5" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round"
                                         d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                                </svg>
+                                <svg class="spinner download-spinner" style="display:none" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="spinner-track" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="spinner-path" fill="currentColor"
+                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                    </path>
                                 </svg>
                                 <span data-i18n="download-btn">Download Video</span>
                             </button>
@@ -254,10 +260,17 @@
     <script>
         var _hmt = _hmt || [];
         (function () {
-            var hm = document.createElement("script");
-            hm.src = "https://hm.baidu.com/hm.js?eec1e94a2b0f2bfad01b7d5c30c6137c";
-            var s = document.getElementsByTagName("script")[0];
-            s.parentNode.insertBefore(hm, s);
+            // 加载第一个统计代码（老域名 ID）
+            var hm1 = document.createElement("script");
+            hm1.src = "https://hm.baidu.com/hm.js?eec1e94a2b0f2bfad01b7d5c30c6137c";
+            var s1 = document.getElementsByTagName("script")[0];
+            s1.parentNode.insertBefore(hm1, s1);
+
+            // 加载第二个统计代码（新域名 ID）
+            var hm2 = document.createElement("script");
+            hm2.src = "https://hm.baidu.com/hm.js?1869cf9d3dae728497e2c8b210dbfe6f";
+            var s2 = document.getElementsByTagName("script")[0];
+            s2.parentNode.insertBefore(hm2, s2);
         })();
     </script>
 </body>

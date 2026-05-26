@@ -7,6 +7,7 @@ import base64
 import json
 import os
 import re
+import random
 import time
 from pathlib import Path
 from typing import Any, Dict, Generator, Optional, List
@@ -569,7 +570,7 @@ class DouyinService:
             addr = video_data.get(key) or {}
             url_list = addr.get("url_list") or []
             if url_list:
-                candidate = url_list[0]
+                candidate = random.choice(url_list)
                 # 去除水印标记
                 # 过滤音频链接
                 if "ies-music" in candidate or ".mp3" in candidate:

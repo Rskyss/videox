@@ -751,7 +751,6 @@ class VideoDownloader:
 
             for attempt in range(max_retries):
                 cmd = [YTDLP_CMD, "-j", "--no-playlist", url]
-                # 解析时使用原有的代理策略
                 cmd.extend(self._platform_specific_args(url))
                 resolved_browser = self._resolve_cookie_browser(url, cookies_from_browser)
                 if resolved_browser:
@@ -761,6 +760,8 @@ class VideoDownloader:
                     cmd.extend(["--cookies", local_cookie])
                 if is_twitter_url(url):
                     cmd.extend(["--extractor-args", "twitter:multiple_video=1"])
+                    # Twitter 优先选 http 直链 mp4，避免 HLS 多分片合并
+                    cmd.extend(["-f", "best[protocol^=http][protocol!*=m3u8]/best"])
 
                 result = subprocess.run(
                     cmd,

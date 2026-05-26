@@ -23,7 +23,10 @@ const translations = {
         'unknown-error': '发生未知错误',
         'no-video-info': '没有可下载的视频信息',
         'download-started': '✅ 下载已开始',
-        'download-merging': '🎬 下载已开始（服务器正在合并视频和音频流）'
+        'download-merging': '🎬 下载已开始（服务器正在合并视频和音频流）',
+        'download-processing': '服务器处理中',
+        'download-processing-hint': '正在下载并合并音视频流，请耐心等待...',
+        'download-btn-retry': '重新下载'
     },
     en: {
         'title': 'Video Parsing Prodigy',
@@ -48,16 +51,22 @@ const translations = {
         'unknown-error': 'Unknown error occurred',
         'no-video-info': 'No video information available for download',
         'download-started': '✅ Download started',
-        'download-merging': '🎬 Download started (Server is merging video and audio streams)'
+        'download-merging': '🎬 Download started (Server is merging video and audio streams)',
+        'download-processing': 'Server processing',
+        'download-processing-hint': 'Downloading and merging audio/video streams, please wait...',
+        'download-btn-retry': 'Re-download'
     }
 };
 
 // 应用状态
 const appState = {
     isLoading: false,
+    isDownloading: false,
+    downloadTimer: null,
+    downloadSeconds: 0,
     videoInfo: null,
     error: null,
-    currentLang: 'en' // 默认英文
+    currentLang: 'en'
 };
 
 // DOM元素
@@ -461,45 +470,130 @@ function handleDownload() {
         return;
     }
 
+    if (appState.isDownloading) {
+        return;
+    }
+
     const videoInfo = appState.videoInfo;
     const isDash = videoInfo.is_dash || false;
-
-    // 构建文件名
     const filename = `${videoInfo.title}.${videoInfo.ext || 'mp4'}`;
 
-    // YouTube特殊处理：直接打开新页面下载（因为YouTube URL需要浏览器直接访问获取ipbypass）
     const isYouTube = videoInfo.platform === 'YouTube' ||
                       (videoInfo.url && videoInfo.url.includes('googlevideo.com'));
 
     if (isYouTube && !isDash) {
-        // YouTube非DASH格式：打开新标签页让用户直接下载
         window.open(videoInfo.url, '_blank');
         showEnvAlert(translations[appState.currentLang]['download-started'], 'success');
         setTimeout(() => { hideEnvAlert(); }, 3000);
         return;
     }
 
-    // 其他平台或DASH格式：使用服务器代理下载
     const proxyUrl = `/proxy-download?video_url=${encodeURIComponent(videoInfo.url)}&filename=${encodeURIComponent(filename)}&is_dash=${isDash}`;
 
-    // 触发下载
-    const link = document.createElement('a');
-    link.href = proxyUrl;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    // 显示下载提示
     if (isDash) {
-        showEnvAlert(translations[appState.currentLang]['download-merging'], 'success');
+        startDashDownload(proxyUrl, filename);
     } else {
+        setDownloadingState(true);
+        const link = document.createElement('a');
+        link.href = proxyUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
         showEnvAlert(translations[appState.currentLang]['download-started'], 'success');
+        setTimeout(() => { hideEnvAlert(); }, 3000);
+        setTimeout(() => { setDownloadingState(false); }, 5000);
     }
+}
 
-    setTimeout(() => {
-        hideEnvAlert();
-    }, 3000);
+// DASH/HLS下载：使用fetch追踪进度，避免重复点击
+function startDashDownload(proxyUrl, filename) {
+    setDownloadingState(true);
+    startDownloadTimer();
+
+    fetch(proxyUrl)
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => { throw new Error(err.error || err.message || 'Download failed'); });
+            }
+            const contentLength = response.headers.get('Content-Length');
+            if (contentLength) {
+                updateDownloadBtnText(
+                    translations[appState.currentLang]['download-processing'],
+                    `${formatBytes(parseInt(contentLength))}`
+                );
+            }
+            return response.blob();
+        })
+        .then(blob => {
+            stopDownloadTimer();
+            const blobUrl = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+            setDownloadingState(false);
+            showEnvAlert(translations[appState.currentLang]['download-started'], 'success');
+            setTimeout(() => { hideEnvAlert(); }, 3000);
+        })
+        .catch(error => {
+            stopDownloadTimer();
+            setDownloadingState(false);
+            showError(error.message);
+        });
+}
+
+function setDownloadingState(downloading) {
+    appState.isDownloading = downloading;
+    const btn = elements.downloadBtn;
+    const btnTextEl = btn.querySelector('span');
+
+    if (downloading) {
+        btn.disabled = true;
+        btn.classList.add('downloading');
+    } else {
+        btn.disabled = false;
+        btn.classList.remove('downloading');
+        if (btnTextEl) {
+            btnTextEl.textContent = translations[appState.currentLang]['download-btn'];
+        }
+    }
+}
+
+
+function startDownloadTimer() {
+    appState.downloadSeconds = 0;
+    updateDownloadBtnText(translations[appState.currentLang]['download-processing'], '0s');
+    appState.downloadTimer = setInterval(() => {
+        appState.downloadSeconds++;
+        updateDownloadBtnText(
+            translations[appState.currentLang]['download-processing'],
+            `${appState.downloadSeconds}s`
+        );
+    }, 1000);
+}
+
+function stopDownloadTimer() {
+    if (appState.downloadTimer) {
+        clearInterval(appState.downloadTimer);
+        appState.downloadTimer = null;
+    }
+}
+
+function updateDownloadBtnText(label, detail) {
+    const btnTextEl = elements.downloadBtn.querySelector('span');
+    if (btnTextEl) {
+        btnTextEl.textContent = `${label} (${detail})`;
+    }
+}
+
+function formatBytes(bytes) {
+    if (!bytes || bytes <= 0) return '';
+    const mb = bytes / (1024 * 1024);
+    return mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb.toFixed(1)} MB`;
 }
 
 // 检查侧边通知是否应该显示

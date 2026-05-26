@@ -506,35 +506,37 @@ def proxy_direct_download(video_url: str, filename: str):
 
 
 def download_with_ytdlp(video_url: str, filename: str):
-    """使用yt-dlp下载（用于DASH格式，自动合并视频和音频）"""
+    """使用yt-dlp下载（用于DASH/HLS格式，自动合并视频和音频）"""
     try:
-        # 创建临时文件（不带扩展名，让 yt-dlp 自动添加）
         temp_dir = tempfile.gettempdir()
-        # 使用简单的文件名避免特殊字符问题
-        safe_filename = f"bili_{int(time.time())}_{os.getpid()}"
+        safe_filename = f"dl_{int(time.time())}_{os.getpid()}"
         temp_file_base = os.path.join(temp_dir, safe_filename)
 
-        is_youtube = 'youtube.com' in video_url.lower() or 'youtu.be' in video_url.lower()
+        url_lower = video_url.lower()
+        is_youtube = 'youtube.com' in url_lower or 'youtu.be' in url_lower
+        is_bilibili = 'bilibili.com' in url_lower or 'b23.tv' in url_lower
+        is_twitter = 'twitter.com' in url_lower or 'x.com' in url_lower
         max_retries = 3 if is_youtube else 1
         result = None
 
-        # 重试循环
         for attempt in range(max_retries):
-            # 构建yt-dlp命令
             cmd = [
                 YTDLP_CMD,
                 video_url,
                 "-o", f"{temp_file_base}.%(ext)s",
-                "--merge-output-format", "mp4",  # 强制输出mp4格式
+                "--merge-output-format", "mp4",
                 "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                "--referer", "https://www.bilibili.com/"
             ]
 
-            # YouTube 视频添加代理支持
+            if is_bilibili:
+                cmd.extend([
+                    "--referer", "https://www.bilibili.com/",
+                    "--add-header", "Origin:https://www.bilibili.com",
+                ])
+
             if is_youtube:
                 cmd.extend([
                     '--extractor-args', 'youtube:player_client=android,web',
-                    '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
                 ])
                 proxy_env = os.environ.get('YOUTUBE_PROXY', '')
                 proxy = proxy_env.split(',')[0].strip() if proxy_env else None
@@ -542,17 +544,19 @@ def download_with_ytdlp(video_url: str, filename: str):
                     cmd.extend(['--proxy', proxy])
                     app.logger.info(f"[尝试 {attempt + 1}/{max_retries}] 使用代理: {proxy[:30]}...")
 
-            # 如果 cookies 文件存在，添加 cookies 参数
+            if is_twitter:
+                cmd.extend(["--extractor-args", "twitter:multiple_video=1"])
+
             cookie_file = downloader.local_cookie_file
-            if cookie_file and os.path.exists(str(cookie_file)):
+            if cookie_file and os.path.exists(str(cookie_file)) and not is_twitter:
                 cmd.extend(["--cookies", str(cookie_file)])
 
-            # 执行下载
+            dl_timeout = 600 if is_twitter else 300
             result = subprocess.run(
                 cmd,
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                 universal_newlines=True,
-                timeout=300  # 5分钟超时
+                timeout=dl_timeout
             )
 
             # 如果成功,跳出循环

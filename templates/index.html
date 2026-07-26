@@ -5,7 +5,7 @@
     <meta name="google-site-verification" content="uxFT4CpENAbw9OnOQGglCbvkh5LV6B0nNhKJAz2Rum0" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Video Parsing Prodigy</title>
+    <title>Free Video Downloader – TikTok, Douyin, Bilibili | VideoX</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
 
@@ -81,6 +81,56 @@
         "description": "专注于AI驱动的实用工具开发"
       },
       "keywords": "AI视频下载,AI视频解析,人工智能工具,视频下载工具,抖音下载,B站下载,YouTube下载"
+    }
+    </script>
+
+    <!-- FAQ结构化数据 - 供Google富摘要与AI搜索引用 -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Is VideoX free to use?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. VideoX is completely free. No registration, no software installation and no payment is required."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do downloaded videos have a watermark?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Videos parsed from Douyin, TikTok, Bilibili and Xiaohongshu are saved without watermarks and keep their original resolution."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which platforms are supported?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Douyin, Bilibili, Xiaohongshu, YouTube, TikTok and Twitter/X. YouTube currently supports 360p only, because it serves high-definition video and audio as separate streams."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why did my link fail to parse?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The link may be incorrect, or the video has been deleted, set to private or is still under review. Copy the share link again and retry."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do you store the videos I download?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. We do not store or cache any video content. Files are streamed directly to your device and all rights remain with the original owners."
+          }
+        }
+      ]
     }
     </script>
 
@@ -207,6 +257,39 @@
                         <img src="/icon/Twitter.png" alt="Twitter/X" class="platform-icon">
                         <span class="platform-name">twitter/x</span>
                     </div>
+                </div>
+            </section>
+
+            <!-- 常见问题 -->
+            <section class="faq-section">
+                <h2 class="faq-heading" data-i18n="faq-heading">Frequently Asked Questions</h2>
+                <div class="faq-list">
+                    <details class="faq-item">
+                        <summary class="faq-question" data-i18n="faq-q1">Is VideoX free to use?</summary>
+                        <p class="faq-answer" data-i18n="faq-a1">Yes. VideoX is completely free. No
+                            registration, no software installation and no payment is required.</p>
+                    </details>
+                    <details class="faq-item">
+                        <summary class="faq-question" data-i18n="faq-q2">Do downloaded videos have a watermark?</summary>
+                        <p class="faq-answer" data-i18n="faq-a2">No. Videos parsed from Douyin, TikTok, Bilibili and
+                            Xiaohongshu are saved without watermarks and keep their original resolution.</p>
+                    </details>
+                    <details class="faq-item">
+                        <summary class="faq-question" data-i18n="faq-q3">Which platforms are supported?</summary>
+                        <p class="faq-answer" data-i18n="faq-a3">Douyin, Bilibili, Xiaohongshu, YouTube, TikTok and
+                            Twitter/X. YouTube currently supports 360p only, because it serves high-definition video
+                            and audio as separate streams.</p>
+                    </details>
+                    <details class="faq-item">
+                        <summary class="faq-question" data-i18n="faq-q4">Why did my link fail to parse?</summary>
+                        <p class="faq-answer" data-i18n="faq-a4">The link may be incorrect, or the video has been
+                            deleted, set to private or is still under review. Copy the share link again and retry.</p>
+                    </details>
+                    <details class="faq-item">
+                        <summary class="faq-question" data-i18n="faq-q5">Do you store the videos I download?</summary>
+                        <p class="faq-answer" data-i18n="faq-a5">No. We do not store or cache any video content. Files
+                            are streamed directly to your device and all rights remain with the original owners.</p>
+                    </details>
                 </div>
             </section>
 

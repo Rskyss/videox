@@ -639,6 +639,63 @@ body {
     }
 }
 
+/* 常见问题 */
+.faq-section {
+    width: 100%;
+    max-width: 42rem;
+    margin: 1rem auto 2rem;
+    padding: 0 1rem;
+}
+
+.faq-heading {
+    color: #cbd5e1;
+    font-size: 1rem;
+    font-weight: 600;
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.faq-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.faq-item {
+    padding: 0.5rem 0;
+}
+
+.faq-question {
+    color: #e5e7eb;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    list-style: none;
+}
+
+.faq-question::-webkit-details-marker {
+    display: none;
+}
+
+.faq-question::before {
+    content: '+';
+    color: #6366f1;
+    font-weight: bold;
+    margin-right: 0.5rem;
+}
+
+.faq-item[open] .faq-question::before {
+    content: '−';
+}
+
+.faq-answer {
+    color: #9ca3af;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    margin-top: 0.5rem;
+    padding-left: 1.25rem;
+}
+
 /* 侧边通知卡片 */
 .side-notification {
     position: fixed;

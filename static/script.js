@@ -1,6 +1,7 @@
 // 翻译字典
 const translations = {
     zh: {
+        'page-title': '视频解析神器 - 免费无水印视频解析下载工具',
         'title': '视频解析神器',
         'subtitle': '粘贴视频链接即可轻松解析和下载',
         'input-placeholder': '在此粘贴视频链接...',
@@ -26,9 +27,21 @@ const translations = {
         'download-merging': '🎬 下载已开始（服务器正在合并视频和音频流）',
         'download-processing': '服务器处理中',
         'download-processing-hint': '正在下载并合并音视频流，请耐心等待...',
-        'download-btn-retry': '重新下载'
+        'download-btn-retry': '重新下载',
+        'faq-heading': '常见问题',
+        'faq-q1': '视频解析神器是免费的吗？',
+        'faq-a1': '完全免费。无需注册、无需安装软件，也不收取任何费用。',
+        'faq-q2': '下载的视频有水印吗？',
+        'faq-a2': '没有。抖音、TikTok、B站、小红书解析后的视频均为无水印，并保留原始清晰度。',
+        'faq-q3': '支持哪些平台？',
+        'faq-a3': '抖音、B站、小红书、YouTube、TikTok、Twitter/X。其中 YouTube 因官方将高清视频与音频分离，目前仅支持 360p。',
+        'faq-q4': '为什么链接解析失败？',
+        'faq-a4': '可能是链接不正确，或视频已被删除、设为私密、仍在审核中。请重新复制分享链接后再试一次。',
+        'faq-q5': '会保存我下载的视频吗？',
+        'faq-a5': '不会。我们不存储也不缓存任何视频内容，文件直接传输到你的设备，所有权利仍归原作者所有。'
     },
     en: {
+        'page-title': 'Free Video Downloader – TikTok, Douyin, Bilibili | VideoX',
         'title': 'Video Parsing Prodigy',
         'subtitle': 'Paste video link to easily parse and download',
         'input-placeholder': 'Paste video link here...',
@@ -54,7 +67,18 @@ const translations = {
         'download-merging': '🎬 Download started (Server is merging video and audio streams)',
         'download-processing': 'Server processing',
         'download-processing-hint': 'Downloading and merging audio/video streams, please wait...',
-        'download-btn-retry': 'Re-download'
+        'download-btn-retry': 'Re-download',
+        'faq-heading': 'Frequently Asked Questions',
+        'faq-q1': 'Is VideoX free to use?',
+        'faq-a1': 'Yes. VideoX is completely free. No registration, no software installation and no payment is required.',
+        'faq-q2': 'Do downloaded videos have a watermark?',
+        'faq-a2': 'No. Videos parsed from Douyin, TikTok, Bilibili and Xiaohongshu are saved without watermarks and keep their original resolution.',
+        'faq-q3': 'Which platforms are supported?',
+        'faq-a3': 'Douyin, Bilibili, Xiaohongshu, YouTube, TikTok and Twitter/X. YouTube currently supports 360p only, because it serves high-definition video and audio as separate streams.',
+        'faq-q4': 'Why did my link fail to parse?',
+        'faq-a4': 'The link may be incorrect, or the video has been deleted, set to private or is still under review. Copy the share link again and retry.',
+        'faq-q5': 'Do you store the videos I download?',
+        'faq-a5': 'No. We do not store or cache any video content. Files are streamed directly to your device and all rights remain with the original owners.'
     }
 };
 
@@ -91,6 +115,12 @@ const elements = {
 // 翻译函数
 function translate(lang) {
     appState.currentLang = lang;
+
+    // 同步浏览器标签标题和页面语言标记,保证搜索引擎读到的语言与实际显示一致
+    if (translations[lang] && translations[lang]['page-title']) {
+        document.title = translations[lang]['page-title'];
+    }
+    document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
 
     // 翻译所有带data-i18n属性的元素
     document.querySelectorAll('[data-i18n]').forEach(element => {

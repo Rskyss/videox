@@ -656,15 +656,24 @@ def download_with_ytdlp(video_url: str, filename: str):
 
 
 # SEO路由 - robots.txt和sitemap.xml
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
 @app.route('/robots.txt')
 def robots():
     """提供robots.txt文件供搜索引擎爬虫读取"""
-    return send_from_directory('.', 'robots.txt', mimetype='text/plain')
+    return send_from_directory(BASE_DIR, 'robots.txt', mimetype='text/plain')
 
 @app.route('/sitemap.xml')
 def sitemap():
     """提供sitemap.xml文件供搜索引擎索引"""
-    return send_from_directory('.', 'sitemap.xml', mimetype='application/xml')
+    return send_from_directory(BASE_DIR, 'sitemap.xml', mimetype='application/xml')
+
+@app.route('/googlebb599f357f33fc9d.html')
+def google_verification():
+    """Google Search Console 站点归属验证文件"""
+    return Response('google-site-verification: googlebb599f357f33fc9d.html',
+                    mimetype='text/html')
 
 if __name__ == '__main__':
     # 生产环境运行
@@ -675,13 +684,3 @@ if __name__ == '__main__':
         threaded=True,   # 启用多线程
         use_reloader=False  # 生产环境关闭自动重载
     )
-
-# Google验证
-@app.route('/googlebb599f357f33fc9d.html')
-def google_verification():
-    return 'google-site-verification: googlebb599f357f33fc9d.html'
-
-# Google验证
-@app.route('/googlebb599f357f33fc9d.html')
-def google_verification():
-    return 'google-site-verification: googlebb599f357f33fc9d.html'

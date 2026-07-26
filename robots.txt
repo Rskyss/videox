@@ -13,7 +13,7 @@ Disallow: /proxy-thumbnail
 Disallow: /proxy-download
 
 # Sitemap位置
-Sitemap: https://www.aifun.store/sitemap.xml
+Sitemap: https://vd.aisoup.ai/sitemap.xml
 
 # 百度爬虫特殊配置
 User-agent: Baiduspider

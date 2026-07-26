@@ -317,6 +317,21 @@ class VideoDownloader:
     def _parse_error(self, error_output: str) -> str:
         if not error_output:
             return "Unknown error"
+        # 优先提取 ERROR 行，避免把 yt-dlp 版本 WARNING 当成失败原因返回给用户
+        meaningful_lines = []
+        for line in error_output.splitlines():
+            s = line.strip()
+            if not s:
+                continue
+            if s.startswith('WARNING:') or s.startswith('WARNING'):
+                continue
+            if 'yt-dlp version' in s or 'strongly recommended' in s:
+                continue
+            if 'You installed yt-dlp' in s or 'suppress this warning' in s:
+                continue
+            meaningful_lines.append(s)
+        if meaningful_lines:
+            error_output = '\n'.join(meaningful_lines)
         error_lower = error_output.lower()
         dependency_errors = {
             'pycryptodome': '缺少 pycryptodome 依赖，运行 start.sh/start.bat 重新安装即可',
@@ -341,6 +356,10 @@ class VideoDownloader:
                 host_hint = host_match.group(1).lower()
             target = host_hint or '目标域名'
             return f"无法解析 {target}，请检查本机网络/DNS 设置或开启系统代理后重试"
+        if 'sign in to confirm' in error_lower or 'not a bot' in error_lower:
+            return 'YouTube 触发人机验证，请更新 cookies.txt 后重试'
+        if 'ip address is blocked' in error_lower or 'your ip address is blocked' in error_lower:
+            return '当前出口 IP 被该平台限制，请检查代理配置后重试'
         auth_patterns = [
             'login required',
             'please log in',
@@ -348,6 +367,7 @@ class VideoDownloader:
             'http error 403',
             'access denied',
             'cookie required',
+            'fresh cookies',
         ]
         if any(token in error_lower for token in auth_patterns):
             return '该平台要求浏览器保持登录，请先在浏览器中登录后重试'
@@ -358,6 +378,8 @@ class VideoDownloader:
             'network': '网络连接失败',
             'unavailable': '视频不可用',
             'unsupported': '不支持的网站或视频格式',
+            'no video formats found': '未找到可下载的视频格式（可能是图文笔记或链接无效）',
+            'no video could be found': '该推文中未找到视频',
         }
         for pattern, message in error_patterns.items():
             if pattern in error_lower:
@@ -577,6 +599,16 @@ class VideoDownloader:
         url_lower = url.lower()
         return 'bilibili.com' in url_lower or 'b23.tv' in url_lower
 
+    def _append_proxy_args(self, args: List[str]) -> None:
+        """附加住宅/备用代理参数（若已配置）"""
+        residential_proxy = self.proxy_manager.get_residential_proxy()
+        if residential_proxy:
+            args.extend(['--proxy', residential_proxy])
+            return
+        proxy = self.proxy_manager.get_next_proxy()
+        if proxy:
+            args.extend(['--proxy', proxy])
+
     def _platform_specific_args(self, url: str):
         """
         生成平台特定的参数
@@ -588,16 +620,15 @@ class VideoDownloader:
         if self._is_youtube_url(url):
             args.extend([
                 '--extractor-args', 'youtube:player_client=android,web',
-                '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                '--no-update',
             ])
             # 优先使用住宅代理
-            residential_proxy = self.proxy_manager.get_residential_proxy()
-            if residential_proxy:
-                args.extend(['--proxy', residential_proxy])
-            else:
-                proxy = self.proxy_manager.get_next_proxy()
-                if proxy:
-                    args.extend(['--proxy', proxy])
+            self._append_proxy_args(args)
+        # TikTok 对机房 IP 常直接 403，解析时走住宅代理并启用浏览器伪装
+        if 'tiktok.com' in url.lower():
+            args.extend(['--no-update', '--impersonate', 'chrome'])
+            self._append_proxy_args(args)
         if self._is_bilibili_url(url):
             args.extend([
                 '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -750,7 +781,7 @@ class VideoDownloader:
             max_retries = 3 if is_youtube else 1
 
             for attempt in range(max_retries):
-                cmd = [YTDLP_CMD, "-j", "--no-playlist", url]
+                cmd = [YTDLP_CMD, "-j", "--no-playlist", "--no-update", url]
                 cmd.extend(self._platform_specific_args(url))
                 resolved_browser = self._resolve_cookie_browser(url, cookies_from_browser)
                 if resolved_browser:

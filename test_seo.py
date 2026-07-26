@@ -26,13 +26,24 @@ class SEOTestCase(unittest.TestCase):
     def test_robots_accessible(self):
         resp = self.client.get('/robots.txt')
         self.assertEqual(resp.status_code, 200)
-        self.assertIn('Sitemap:', resp.get_data(as_text=True))
+        body = resp.get_data(as_text=True)
+        self.assertIn('Sitemap:', body)
+        self.assertIn('https://vd.aisoup.ai/sitemap.xml', body)
+        self.assertNotIn('aifun.store', body)
 
     def test_sitemap_accessible(self):
         resp = self.client.get('/sitemap.xml')
         self.assertEqual(resp.status_code, 200)
         self.assertIn('xml', resp.headers.get('Content-Type', ''))
-        self.assertIn('<loc>', resp.get_data(as_text=True))
+        body = resp.get_data(as_text=True)
+        self.assertIn('<loc>https://vd.aisoup.ai/</loc>', body)
+        self.assertNotIn('aifun.store', body)
+
+    def test_canonical_uses_primary_domain(self):
+        html = self.client.get('/').get_data(as_text=True)
+        self.assertIn('rel="canonical" href="https://vd.aisoup.ai/"', html)
+        self.assertIn('og:url" content="https://vd.aisoup.ai"', html)
+        self.assertNotIn('aifun.store', html)
 
     def test_google_verification_accessible(self):
         resp = self.client.get('/googlebb599f357f33fc9d.html')

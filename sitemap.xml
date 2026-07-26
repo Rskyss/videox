@@ -3,15 +3,15 @@
         xmlns:xhtml="http://www.w3.org/1999/xhtml"
         xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
-    <loc>https://www.aifun.store/</loc>
+    <loc>https://vd.aisoup.ai/</loc>
     <lastmod>2026-07-26</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://www.aifun.store/?lang=zh"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://www.aifun.store/?lang=en"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.aifun.store/"/>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://vd.aisoup.ai/?lang=zh"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://vd.aisoup.ai/?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://vd.aisoup.ai/"/>
     <image:image>
-      <image:loc>https://www.aifun.store/static/favicon.png</image:loc>
+      <image:loc>https://vd.aisoup.ai/static/favicon.png</image:loc>
       <image:title>VideoX AI视频解析工具</image:title>
       <image:caption>AI智能视频下载工具，支持多平台</image:caption>
     </image:image>

@@ -13,7 +13,7 @@ body {
     min-height: 100vh;
     padding: 1rem;
     padding-top: 6rem;
-    padding-bottom: 6rem;
+    padding-bottom: 2rem;
     color: #fff;
     display: flex;
     flex-direction: column;
@@ -483,15 +483,11 @@ body {
     height: 24px;
 }
 
-/* 底部 */
+/* 底部：随页面滚动，不固定贴底 */
 .app-footer {
-    position: fixed;
-    bottom: 20px;
-    left: 0;
-    right: 0;
     text-align: center;
     padding: 1.5rem 1rem;
-    z-index: 10;
+    margin-top: 2rem;
 }
 
 .language-switcher {

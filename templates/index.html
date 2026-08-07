@@ -217,6 +217,16 @@
                                     <option value="1080" data-i18n="quality-1080">1080p · HD</option>
                                 </select>
                             </div>
+                            <div id="download-progress" class="download-progress" role="progressbar"
+                                aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="display: none;">
+                                <div class="download-progress-info">
+                                    <span id="download-status">Preparing download</span>
+                                    <span id="download-percent">0%</span>
+                                </div>
+                                <div class="download-progress-track">
+                                    <div id="download-progress-bar" class="download-progress-bar"></div>
+                                </div>
+                            </div>
                             <button id="download-btn" class="download-btn">
                                 <svg class="icon download-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
                                     stroke-width="1.5" stroke="currentColor">
@@ -313,8 +323,8 @@
                     <div class="side-text">
                         <p class="highlight">⚠️ AI 实验产品说明</p>
                         <p>本工具目前处于实验阶段，主要用于技术探索和交流</p>
-                        <p class="warning-text"><strong>YouTube / B站 可选手动清晰度。</strong>可选 360p、720p 或 1080p，默认 720p。</p>
-                        <p>✅ 支持抖音、B站、小红书、YouTube、Twitter/X、TikTok。</p>
+                        <p class="warning-text"><strong>YouTube / B站：先看进度条，满了自动保存。</strong>可选 360p、720p 或 1080p，默认 720p。</p>
+                        <p>✅ 普通直链仍直接走浏览器下载栏。</p>
                         <p>有问题记得关注私信哦~</p>
                     </div>
 

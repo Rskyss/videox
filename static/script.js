@@ -23,14 +23,20 @@ const translations = {
         'parse-failed': '解析失败',
         'unknown-error': '发生未知错误',
         'no-video-info': '没有可下载的视频信息',
-        'download-started': '✅ 下载已开始，请在浏览器下载栏查看进度',
-        'download-merging': '🎬 下载已开始（服务器正在合并视频和音频流）',
-        'download-processing': '准备下载中',
+        'download-started': '✅ 下载已开始，请在浏览器下载栏查看',
+        'download-merging': '🎬 服务器正在合并视频和音频流',
+        'download-processing': '服务器处理中',
         'download-btn-retry': '重新下载',
         'quality-label': '清晰度',
         'quality-360': '360p · 快速',
         'quality-720': '720p · 推荐',
         'quality-1080': '1080p · 高清',
+        'download-queued': '任务排队中',
+        'download-downloading': '正在下载视频',
+        'download-merging-status': '正在合并音视频',
+        'download-ready': '处理完成，正在保存到本地',
+        'download-timeout': '下载任务超时，请稍后重试',
+        'server-timeout': '服务器处理超时，请稍后重试',
         'faq-heading': '常见问题',
         'faq-q1': '视频解析神器是免费的吗？',
         'faq-a1': '完全免费。无需注册、无需安装软件，也不收取任何费用。',
@@ -41,7 +47,7 @@ const translations = {
         'faq-q4': '为什么链接解析失败？',
         'faq-a4': '可能是链接不正确，或视频已被删除、设为私密、仍在审核中。请重新复制分享链接后再试一次。',
         'faq-q5': '会保存我下载的视频吗？',
-        'faq-a5': '普通直链会直接由浏览器下载；需要合并的视频仅在服务器临时处理，传完即删。'
+        'faq-a5': '普通直链由浏览器直接下载；需要合并的视频在服务器临时处理后自动保存到你的电脑，传完即删。'
     },
     en: {
         'page-title': 'Free Video Downloader – TikTok, Douyin, Bilibili | VideoX',
@@ -66,14 +72,20 @@ const translations = {
         'parse-failed': 'Parse failed',
         'unknown-error': 'Unknown error occurred',
         'no-video-info': 'No video information available for download',
-        'download-started': '✅ Download started — check your browser download bar for progress',
-        'download-merging': '🎬 Download started (Server is merging video and audio streams)',
-        'download-processing': 'Preparing download',
+        'download-started': '✅ Download started — check your browser download bar',
+        'download-merging': '🎬 Server is merging video and audio streams',
+        'download-processing': 'Server processing',
         'download-btn-retry': 'Re-download',
         'quality-label': 'Quality',
         'quality-360': '360p · Fast',
         'quality-720': '720p · Recommended',
         'quality-1080': '1080p · HD',
+        'download-queued': 'Waiting in queue',
+        'download-downloading': 'Downloading video',
+        'download-merging-status': 'Merging audio and video',
+        'download-ready': 'Ready — saving to your device',
+        'download-timeout': 'Download task timed out. Please try again later.',
+        'server-timeout': 'Server processing timed out. Please try again later.',
         'faq-heading': 'Frequently Asked Questions',
         'faq-q1': 'Is VideoX free to use?',
         'faq-a1': 'Yes. VideoX is completely free. No registration, no software installation and no payment is required.',
@@ -84,7 +96,7 @@ const translations = {
         'faq-q4': 'Why did my link fail to parse?',
         'faq-a4': 'The link may be incorrect, or the video has been deleted, set to private or is still under review. Copy the share link again and retry.',
         'faq-q5': 'Do you store the videos I download?',
-        'faq-a5': 'Direct media streams go to your browser. Videos that need merging are processed temporarily on the server and deleted after transfer.'
+        'faq-a5': 'Direct links go to your browser. Videos that need merging are processed temporarily on the server, then automatically saved to your device and deleted afterward.'
     }
 };
 
@@ -92,6 +104,7 @@ const translations = {
 const appState = {
     isLoading: false,
     isDownloading: false,
+    downloadJobId: null,
     downloadTimer: null,
     downloadSeconds: 0,
     videoInfo: null,
@@ -115,6 +128,10 @@ const elements = {
     videoSize: document.getElementById('video-size'),
     qualityControl: document.getElementById('quality-control'),
     qualitySelect: document.getElementById('quality-select'),
+    downloadProgress: document.getElementById('download-progress'),
+    downloadStatus: document.getElementById('download-status'),
+    downloadPercent: document.getElementById('download-percent'),
+    downloadProgressBar: document.getElementById('download-progress-bar'),
     downloadBtn: document.getElementById('download-btn'),
     envStatus: document.getElementById('env-status'),
     urlForm: document.getElementById('url-form')
@@ -421,6 +438,10 @@ async function parseApiResponse(response) {
         return data;
     }
 
+    if (response.status === 504) {
+        throw new Error(t('server-timeout'));
+    }
+
     throw new Error(`Server returned HTTP ${response.status}`);
 }
 
@@ -510,6 +531,7 @@ function displayVideoInfo(videoInfo) {
         (videoInfo.page_url && /(?:bilibili\.com|b23\.tv)/i.test(videoInfo.page_url));
     elements.qualityControl.style.display = (isYouTube || isBilibili) ? 'flex' : 'none';
     elements.qualitySelect.value = '720';
+    resetDownloadProgress();
 
     // 显示视频结果
     showVideoResult();
@@ -526,9 +548,12 @@ function hideVideoResult() {
     elements.clearBtn.style.display = 'none';
     elements.qualityControl.style.display = 'none';
     stopDownloadTimer();
+    resetDownloadProgress();
 }
 
-// 处理下载：触发浏览器原生下载，进度看浏览器下载栏
+// 处理下载：
+// - 需要合并的（YouTube / B站 / DASH）走后台任务 + 进度条，满了自动保存
+// - 普通直链直接走浏览器下载栏
 function handleDownload() {
     if (!appState.videoInfo) {
         showError(translations[appState.currentLang]['no-video-info']);
@@ -546,26 +571,119 @@ function handleDownload() {
         (videoInfo.page_url && /(?:youtube\.com|youtu\.be)/i.test(videoInfo.page_url));
     const isBilibili = videoInfo.platform === 'B站' ||
         (videoInfo.page_url && /(?:bilibili\.com|b23\.tv)/i.test(videoInfo.page_url));
-    const quality = (isYouTube || isBilibili) ? (elements.qualitySelect.value || '720') : '';
+    const quality = (isYouTube || isBilibili) ? (elements.qualitySelect.value || '720') : 'best';
+    const needsMerge = isYouTube || isBilibili || isDash;
 
-    // YouTube 非 DASH 直链：直接打开源站地址，由浏览器下载
-    if (isYouTube && !isDash && videoInfo.url && /googlevideo\.com/i.test(videoInfo.url)) {
-        window.open(videoInfo.url, '_blank');
-        showEnvAlert(translations[appState.currentLang]['download-started'], 'success');
-        setTimeout(() => { hideEnvAlert(); }, 3000);
+    if (needsMerge) {
+        startDownloadJob(videoInfo, filename, quality);
         return;
     }
 
-    const sourceUrl = (isYouTube || isBilibili || isDash)
-        ? (videoInfo.page_url || videoInfo.url)
-        : videoInfo.url;
+    const proxyUrl = `/proxy-download?video_url=${encodeURIComponent(videoInfo.url)}&filename=${encodeURIComponent(filename)}&is_dash=false`;
+    startBrowserDownload(proxyUrl, filename, false);
+}
 
-    let proxyUrl = `/proxy-download?video_url=${encodeURIComponent(sourceUrl)}&filename=${encodeURIComponent(filename)}&is_dash=${isDash || isYouTube || isBilibili}`;
-    if (quality) {
-        proxyUrl += `&quality=${encodeURIComponent(quality)}`;
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function updateJobProgress(status, progress, message, progressKnown = true) {
+    const percent = Math.min(100, Math.max(0, Number(progress) || 0));
+    let localizedStatus = message || translations[appState.currentLang]['download-processing'];
+    if (status === 'queued') localizedStatus = translations[appState.currentLang]['download-queued'];
+    if (status === 'downloading') localizedStatus = translations[appState.currentLang]['download-downloading'];
+    if (status === 'merging') localizedStatus = translations[appState.currentLang]['download-merging-status'];
+    if (status === 'ready') localizedStatus = translations[appState.currentLang]['download-ready'];
+
+    elements.downloadProgress.style.display = 'block';
+    elements.downloadStatus.textContent = localizedStatus;
+    elements.downloadProgressBar.classList.toggle('indeterminate', progressKnown === false);
+    elements.downloadPercent.textContent = progressKnown === false ? '…' : `${Math.round(percent)}%`;
+    elements.downloadProgressBar.style.width = progressKnown === false ? '35%' : `${percent}%`;
+    if (progressKnown === false) {
+        elements.downloadProgress.removeAttribute('aria-valuenow');
+        elements.downloadProgress.setAttribute('aria-valuetext', localizedStatus);
+    } else {
+        elements.downloadProgress.setAttribute('aria-valuenow', String(Math.round(percent)));
+        elements.downloadProgress.removeAttribute('aria-valuetext');
     }
+    updateDownloadBtnText(localizedStatus, progressKnown === false ? '…' : `${Math.round(percent)}%`);
+}
 
-    startBrowserDownload(proxyUrl, filename, isDash || isYouTube || isBilibili);
+function resetDownloadProgress() {
+    if (!elements.downloadProgress) return;
+    elements.downloadProgress.style.display = 'none';
+    elements.downloadStatus.textContent = '';
+    elements.downloadPercent.textContent = '0%';
+    elements.downloadProgressBar.style.width = '0%';
+    elements.downloadProgressBar.classList.remove('indeterminate');
+    elements.downloadProgress.setAttribute('aria-valuenow', '0');
+    elements.downloadProgress.removeAttribute('aria-valuetext');
+}
+
+async function startDownloadJob(videoInfo, filename, quality) {
+    setDownloadingState(true);
+    clearError();
+    updateJobProgress('queued', 0, translations[appState.currentLang]['download-queued']);
+
+    try {
+        const createResponse = await fetch('/download-jobs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                url: videoInfo.page_url || videoInfo.url,
+                media_url: videoInfo.url,
+                platform: videoInfo.platform,
+                is_dash: Boolean(videoInfo.is_dash) || videoInfo.platform === 'YouTube' || videoInfo.platform === 'B站',
+                expected_size: Number(videoInfo.size) || 0,
+                filename,
+                quality
+            })
+        });
+        const created = await parseApiResponse(createResponse);
+        appState.downloadJobId = created.job_id;
+
+        const startedAt = Date.now();
+        while (appState.isDownloading && appState.downloadJobId === created.job_id) {
+            if (Date.now() - startedAt > 20 * 60 * 1000) {
+                throw new Error(translations[appState.currentLang]['download-timeout']);
+            }
+
+            await sleep(1000);
+            const statusResponse = await fetch(created.status_url, { cache: 'no-store' });
+            const job = await parseApiResponse(statusResponse);
+
+            if (job.status === 'error') {
+                throw new Error(job.error || job.message || 'Download failed');
+            }
+
+            updateJobProgress(job.status, job.progress, job.message, job.progress_known !== false);
+            if (job.status === 'ready' && job.download_url) {
+                // 进度满后自动触发浏览器保存
+                updateJobProgress('ready', 100, translations[appState.currentLang]['download-ready'], true);
+                const link = document.createElement('a');
+                link.href = job.download_url;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                appState.downloadJobId = null;
+                setDownloadingState(false);
+                showEnvAlert(translations[appState.currentLang]['download-started'], 'success');
+                setTimeout(() => {
+                    hideEnvAlert();
+                    resetDownloadProgress();
+                }, 3000);
+                return;
+            }
+        }
+    } catch (error) {
+        appState.downloadJobId = null;
+        setDownloadingState(false);
+        resetDownloadProgress();
+        showError(error instanceof Error ? error.message : translations[appState.currentLang]['unknown-error']);
+    }
 }
 
 function startBrowserDownload(proxyUrl, filename, needsServerPrepare) {
@@ -573,7 +691,6 @@ function startBrowserDownload(proxyUrl, filename, needsServerPrepare) {
     clearError();
 
     if (needsServerPrepare) {
-        // 合并类任务：按钮短暂提示准备中；真正进度看浏览器下载栏
         startDownloadTimer();
         showEnvAlert(translations[appState.currentLang]['download-merging'], 'success');
     }

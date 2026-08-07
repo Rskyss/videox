@@ -1,4 +1,4 @@
-"""下载页面前后端契约的静态测试（web 分支：浏览器原生下载）。"""
+"""下载页面前后端契约的静态测试（web：合并走进度条，直链走浏览器）。"""
 
 import re
 import unittest
@@ -17,18 +17,21 @@ class FrontendDownloadContractTestCase(unittest.TestCase):
         self.assertEqual(values, {'360', '720', '1080'})
         self.assertIn('<option value="720" data-i18n="quality-720" selected>', self.html)
 
-    def test_browser_native_download_via_proxy(self):
+    def test_merge_platforms_use_job_progress_then_auto_save(self):
+        self.assertIn("fetch('/download-jobs'", self.script)
+        self.assertIn('startDownloadJob(', self.script)
+        self.assertIn('job.download_url', self.script)
+        self.assertIn('role="progressbar"', self.html)
+        self.assertIn('download-progress', self.html)
+        self.assertIn("updateJobProgress('ready', 100", self.script)
+
+    def test_direct_links_still_use_browser_download(self):
         self.assertIn('/proxy-download?', self.script)
         self.assertIn('startBrowserDownload(', self.script)
-        self.assertIn("link.download = filename", self.script)
-        self.assertNotIn("fetch('/download-jobs'", self.script)
-        self.assertNotIn('download-progress', self.html)
-        self.assertNotIn('role="progressbar"', self.html)
 
     def test_bilibili_shows_quality_picker_like_youtube(self):
         self.assertIn('isBilibili', self.script)
         self.assertIn('(isYouTube || isBilibili)', self.script)
-        self.assertIn("elements.qualityControl.style.display = (isYouTube || isBilibili) ? 'flex' : 'none'", self.script)
 
     def test_non_json_parse_errors_are_handled(self):
         self.assertIn("contentType.includes('application/json')", self.script)

@@ -38,6 +38,23 @@ class FrontendDownloadContractTestCase(unittest.TestCase):
         self.assertIn('/proxy-download?', self.script)
         self.assertIn('startBrowserDownload(', self.script)
 
+    def test_xiaohongshu_uses_direct_cdn_then_native_browser_download(self):
+        """小红书应绕开新加坡服务器直连 CDN 取流，但最终仍交给浏览器原生下载
+        （blob + <a download>），保持和其他平台一致的右上角下载栏体验；
+        不引入自定义进度条或系统保存对话框（用户明确要求过一致体验）。"""
+        self.assertIn('function isXiaohongshuVideo', self.script)
+        self.assertIn('function isTrustedXiaohongshuMediaUrl', self.script)
+        self.assertIn('function startXiaohongshuCdnDownload', self.script)
+        self.assertIn("referrerPolicy: 'no-referrer'", self.script)
+        self.assertIn('toHttpsMediaUrl', self.script)
+        self.assertIn('response.blob()', self.script)
+        self.assertIn('URL.createObjectURL(blob)', self.script)
+        self.assertIn('startBrowserDownload(blobUrl, filename, false)', self.script)
+        # 不引入系统保存对话框或自定义进度条
+        self.assertNotIn('showSaveFilePicker', self.script)
+        # 直连失败（CORS 被拒等）时仍回退本站中转
+        self.assertIn('/proxy-download?', self.script)
+
     def test_bilibili_shows_quality_picker_like_youtube(self):
         self.assertIn('isBilibili', self.script)
         self.assertIn('(isYouTube || isBilibili)', self.script)

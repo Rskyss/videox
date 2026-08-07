@@ -24,6 +24,7 @@ const translations = {
         'unknown-error': '发生未知错误',
         'no-video-info': '没有可下载的视频信息',
         'download-started': '✅ 下载已开始，请在浏览器下载栏查看',
+        'download-fetching-cdn': '📥 正在通过小红书线路获取视频…',
         'download-merging': '🎬 服务器正在合并视频和音频流',
         'download-processing': '服务器处理中',
         'download-btn-retry': '重新下载',
@@ -73,6 +74,7 @@ const translations = {
         'unknown-error': 'Unknown error occurred',
         'no-video-info': 'No video information available for download',
         'download-started': '✅ Download started — check your browser download bar',
+        'download-fetching-cdn': '📥 Fetching video via Xiaohongshu CDN…',
         'download-merging': '🎬 Server is merging video and audio streams',
         'download-processing': 'Server processing',
         'download-btn-retry': 'Re-download',
@@ -608,9 +610,36 @@ function hideVideoResult() {
     resetDownloadProgress();
 }
 
+function isXiaohongshuVideo(videoInfo) {
+    if (!videoInfo) return false;
+    if (videoInfo.platform === '小红书' || /xiaohongshu/i.test(videoInfo.platform || '')) {
+        return true;
+    }
+    const pageUrl = videoInfo.page_url || '';
+    const mediaUrl = videoInfo.url || '';
+    return /(?:xiaohongshu\.com|xhslink\.com)/i.test(pageUrl) || /xhscdn\.com/i.test(mediaUrl);
+}
+
+function toHttpsMediaUrl(url) {
+    if (typeof url === 'string' && url.startsWith('http://')) {
+        return `https://${url.slice('http://'.length)}`;
+    }
+    return url;
+}
+
+function isTrustedXiaohongshuMediaUrl(url) {
+    try {
+        const host = new URL(url).hostname.toLowerCase();
+        return host === 'xhscdn.com' || host.endsWith('.xhscdn.com');
+    } catch (error) {
+        return false;
+    }
+}
+
 // 处理下载：
 // - 需要合并的（YouTube / B站 / DASH）走后台任务 + 进度条，满了自动保存
-// - 普通直链直接走浏览器下载栏
+// - 小红书直链：浏览器直连 CDN（no-referrer），避免新加坡服务器中转过慢；不可直连时回退中转
+// - 其他普通直链走浏览器下载栏（经本站中转）
 function handleDownload() {
     if (!appState.videoInfo) {
         showError(translations[appState.currentLang]['no-video-info']);
@@ -636,8 +665,45 @@ function handleDownload() {
         return;
     }
 
+    if (isXiaohongshuVideo(videoInfo)) {
+        const directUrl = toHttpsMediaUrl(videoInfo.url);
+        if (isTrustedXiaohongshuMediaUrl(directUrl)) {
+            // 直连 CDN 保存；绝不在当前页 302 跳转（否则会冲掉解析页并变成在线播放）
+            startXiaohongshuCdnDownload(directUrl, filename);
+            return;
+        }
+    }
+
     const proxyUrl = `/proxy-download?video_url=${encodeURIComponent(videoInfo.url)}&filename=${encodeURIComponent(filename)}&is_dash=false`;
     startBrowserDownload(proxyUrl, filename, false);
+}
+
+// 小红书直连下载：JS 先把 CDN 视频取到内存（Blob），再交给浏览器原生下载，
+// 这样右上角下载图标的表现和其他平台完全一致，不引入自定义进度条或系统保存对话框。
+// 若 CDN 拒绝跨域请求（极少数情况），回退到服务器中转下载。
+async function startXiaohongshuCdnDownload(directUrl, filename) {
+    setDownloadingState(true);
+    clearError();
+    showEnvAlert(translations[appState.currentLang]['download-fetching-cdn'], 'success');
+
+    try {
+        const response = await fetch(directUrl, {
+            method: 'GET',
+            mode: 'cors',
+            credentials: 'omit',
+            referrerPolicy: 'no-referrer',
+        });
+        if (!response.ok) {
+            throw new Error(`cdn_http_${response.status}`);
+        }
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        startBrowserDownload(blobUrl, filename, false);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+    } catch (error) {
+        const proxyUrl = `/proxy-download?video_url=${encodeURIComponent(directUrl)}&filename=${encodeURIComponent(filename)}&is_dash=false`;
+        startBrowserDownload(proxyUrl, filename, false);
+    }
 }
 
 function sleep(ms) {
@@ -748,7 +814,7 @@ async function startDownloadJob(videoInfo, filename, quality) {
     }
 }
 
-function startBrowserDownload(proxyUrl, filename, needsServerPrepare) {
+function startBrowserDownload(proxyUrl, filename, needsServerPrepare, options = {}) {
     setDownloadingState(true);
     clearError();
 
@@ -760,6 +826,13 @@ function startBrowserDownload(proxyUrl, filename, needsServerPrepare) {
     const link = document.createElement('a');
     link.href = proxyUrl;
     link.download = filename;
+    if (options.referrerPolicy) {
+        link.referrerPolicy = options.referrerPolicy;
+        // 兼容不支持 referrerPolicy 属性的环境，避免带上本站 Referer 被 CDN 拒绝
+        if (options.referrerPolicy === 'no-referrer') {
+            link.rel = 'noreferrer';
+        }
+    }
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

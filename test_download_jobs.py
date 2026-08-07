@@ -685,6 +685,5 @@ class DownloadJobTestCase(unittest.TestCase):
         self.assertTrue(first_session.closed)
         self.assertTrue(second_session.closed)
 
-
 if __name__ == '__main__':
     unittest.main(verbosity=2)

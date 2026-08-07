@@ -25,6 +25,15 @@ class FrontendDownloadContractTestCase(unittest.TestCase):
         self.assertIn('download-progress', self.html)
         self.assertIn("updateJobProgress('ready', 100", self.script)
 
+    def test_progress_ui_prefers_server_status_message(self):
+        """后端的重试/音频阶段文案不能被笼统的 Downloading video 盖掉。"""
+        self.assertIn("let localizedStatus = (message || '').trim();", self.script)
+        self.assertNotIn(
+            "if (status === 'downloading') localizedStatus = translations[appState.currentLang]['download-downloading'];\n"
+            "    if (status === 'merging')",
+            self.script,
+        )
+
     def test_direct_links_still_use_browser_download(self):
         self.assertIn('/proxy-download?', self.script)
         self.assertIn('startBrowserDownload(', self.script)
@@ -37,6 +46,12 @@ class FrontendDownloadContractTestCase(unittest.TestCase):
         self.assertIn("qualitySelect.addEventListener('change', updateSizeForSelectedQuality)", self.script)
         self.assertIn('function updateSizeForSelectedQuality', self.script)
         self.assertIn('quality_sizes_readable', self.script)
+
+    def test_bilibili_hides_unavailable_quality_options(self):
+        self.assertIn('function applyQualityOptions', self.script)
+        self.assertIn('available_qualities', self.script)
+        self.assertIn('quality_labels', self.script)
+        self.assertIn('option.hidden = !isAvailable', self.script)
 
     def test_non_json_parse_errors_are_handled(self):
         self.assertIn("contentType.includes('application/json')", self.script)

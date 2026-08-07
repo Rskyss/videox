@@ -171,6 +171,12 @@ function translate(lang) {
 
     // 保存语言设置到localStorage
     localStorage.setItem('preferred-lang', lang);
+
+    // 语言切换会重写 option 文案，需把 B站真实可用清晰度标签重新套回去
+    if (appState.videoInfo) {
+        applyQualityOptions(appState.videoInfo);
+        updateSizeForSelectedQuality();
+    }
 }
 
 // 检测是否为移动设备
@@ -531,12 +537,46 @@ function displayVideoInfo(videoInfo) {
     const isBilibili = videoInfo.platform === 'B站' ||
         (videoInfo.page_url && /(?:bilibili\.com|b23\.tv)/i.test(videoInfo.page_url));
     elements.qualityControl.style.display = (isYouTube || isBilibili) ? 'flex' : 'none';
-    elements.qualitySelect.value = '720';
+    applyQualityOptions(videoInfo);
     updateSizeForSelectedQuality();
     resetDownloadProgress();
 
     // 显示视频结果
     showVideoResult();
+}
+
+// B站按真实可用分辨率隐藏更高档；中间档（如最高只有 480）会改成「480p · 最高」
+function applyQualityOptions(videoInfo) {
+    const available = Array.isArray(videoInfo.available_qualities)
+        ? videoInfo.available_qualities.map(String)
+        : null;
+    const labels = videoInfo.quality_labels || {};
+    const defaultQuality = String(
+        videoInfo.default_quality
+        || (available && available.length ? available[available.length - 1] : '720')
+    );
+
+    Array.from(elements.qualitySelect.options).forEach((option) => {
+        const quality = option.value;
+        const isAvailable = !available || available.includes(quality);
+        option.hidden = !isAvailable;
+        option.disabled = !isAvailable;
+        if (labels[quality]) {
+            option.textContent = labels[quality];
+        } else {
+            const i18nKey = option.getAttribute('data-i18n');
+            option.textContent = (i18nKey && translations[appState.currentLang][i18nKey])
+                || option.textContent;
+        }
+    });
+
+    if (!available || available.includes(defaultQuality)) {
+        elements.qualitySelect.value = defaultQuality;
+    } else if (available.length) {
+        elements.qualitySelect.value = available[available.length - 1];
+    } else {
+        elements.qualitySelect.value = '720';
+    }
 }
 
 // 根据当前选中的清晰度，刷新页面上显示的体积
@@ -549,7 +589,7 @@ function updateSizeForSelectedQuality() {
     const sizesReadable = videoInfo.quality_sizes_readable;
     if (!sizesReadable) return;
 
-    const quality = elements.qualitySelect.value || '720';
+    const quality = elements.qualitySelect.value || videoInfo.default_quality || '720';
     const readable = sizesReadable[quality];
     elements.videoSize.textContent = (readable && readable !== 'Unknown') ? readable : '--';
 }
@@ -606,11 +646,16 @@ function sleep(ms) {
 
 function updateJobProgress(status, progress, message, progressKnown = true) {
     const percent = Math.min(100, Math.max(0, Number(progress) || 0));
-    let localizedStatus = message || translations[appState.currentLang]['download-processing'];
-    if (status === 'queued') localizedStatus = translations[appState.currentLang]['download-queued'];
-    if (status === 'downloading') localizedStatus = translations[appState.currentLang]['download-downloading'];
-    if (status === 'merging') localizedStatus = translations[appState.currentLang]['download-merging-status'];
-    if (status === 'ready') localizedStatus = translations[appState.currentLang]['download-ready'];
+    // 优先展示后端实时文案（如「正在下载音频」「网络不稳，正在重试」），
+    // 不要用笼统的「Downloading video」盖住，否则用户会以为卡死在 0%。
+    let localizedStatus = (message || '').trim();
+    if (!localizedStatus) {
+        localizedStatus = translations[appState.currentLang]['download-processing'];
+        if (status === 'queued') localizedStatus = translations[appState.currentLang]['download-queued'];
+        if (status === 'downloading') localizedStatus = translations[appState.currentLang]['download-downloading'];
+        if (status === 'merging') localizedStatus = translations[appState.currentLang]['download-merging-status'];
+        if (status === 'ready') localizedStatus = translations[appState.currentLang]['download-ready'];
+    }
 
     elements.downloadProgress.style.display = 'block';
     elements.downloadStatus.textContent = localizedStatus;

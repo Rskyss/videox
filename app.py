@@ -166,6 +166,17 @@ def _download_job_cleanup_loop() -> None:
         _cleanup_expired_download_jobs()
 
 
+# 分片/连接中途被平台掐断（如 B站常见的 SSL EOF）时的抗断线参数：
+# 提高重试次数并加上退避等待，给瞬时网络问题留出恢复时间。
+RESILIENT_RETRY_ARGS = [
+    '--retries', '10',
+    '--fragment-retries', '15',
+    '--retry-sleep', 'linear=1:10:2',
+    '--retry-sleep', 'fragment:linear=1:10:2',
+    '--socket-timeout', '30',
+]
+
+
 def _youtube_download_command(
     url: str,
     output_base: str,
@@ -181,9 +192,7 @@ def _youtube_download_command(
         '--newline',
         '--progress',
         '--concurrent-fragments', '4',
-        '--retries', '3',
-        '--fragment-retries', '3',
-        '--socket-timeout', '30',
+        *RESILIENT_RETRY_ARGS,
         '-f', YOUTUBE_QUALITY_SELECTORS[quality],
         '-o', f'{output_base}.%(ext)s',
         '--merge-output-format', 'mp4',
@@ -210,6 +219,9 @@ def _platform_download_command(job, output_base: str, proxy=None, client=None):
             client or 'web_safari',
         )
 
+    # B站 CDN 对多连接更敏感，并发分片容易在音频流阶段触发 SSL 中断；降到 1 更稳。
+    # 部分网络环境下 IPv6 握手会长时间卡住，进度一直停在 0%，强制 IPv4。
+    concurrent_fragments = '1' if platform == 'bilibili' else '4'
     cmd = [
         YTDLP_CMD,
         source_url,
@@ -217,10 +229,8 @@ def _platform_download_command(job, output_base: str, proxy=None, client=None):
         '--no-update',
         '--newline',
         '--progress',
-        '--concurrent-fragments', '4',
-        '--retries', '3',
-        '--fragment-retries', '3',
-        '--socket-timeout', '30',
+        '--concurrent-fragments', concurrent_fragments,
+        *RESILIENT_RETRY_ARGS,
         '-f', (
             BILIBILI_QUALITY_SELECTORS.get(quality, BILIBILI_QUALITY_SELECTORS['720'])
             if platform == 'bilibili'
@@ -229,6 +239,8 @@ def _platform_download_command(job, output_base: str, proxy=None, client=None):
         '-o', f'{output_base}.%(ext)s',
         '--merge-output-format', 'mp4',
     ]
+    if platform == 'bilibili':
+        cmd.append('--force-ipv4')
     cmd.extend(downloader._platform_specific_args(source_url))
     if platform == 'twitter':
         cmd.extend(['--extractor-args', 'twitter:multiple_video=1'])
@@ -353,7 +365,9 @@ def _run_download_job(job_id: str) -> None:
             )
             app.logger.warning('直链下载失败，回退 yt-dlp: %s', sanitize_sensitive_output(str(exc)))
 
-        routes = [(None, None)]
+        # 非 YouTube 平台此前只有一次机会：一旦这次遇到瞬时网络问题（如 B站常见的
+        # SSL EOF 中断），整个任务直接判定失败。这里给普通平台也留几次完整重试。
+        routes = [(None, None)] * 3
         if job['platform'] == 'youtube':
             routes = []
             for proxy in downloader.proxy_manager.get_proxies()[:3]:
@@ -385,15 +399,25 @@ def _run_download_job(job_id: str) -> None:
             expected_streams = 1
             completed_streams = 0
             previous_stream_percent = 0.0
+            current_progress = 0
 
             try:
+                process_env = ytdlp_subprocess_env()
+                # B站走国内 CDN，继承本机系统代理（Clash 等）反而容易在音频流阶段 SSL 断开。
+                # YouTube 有单独的显式代理线路，不受这里影响。
+                if job['platform'] == 'bilibili':
+                    for key in (
+                        'http_proxy', 'https_proxy', 'HTTP_PROXY', 'HTTPS_PROXY',
+                        'all_proxy', 'ALL_PROXY',
+                    ):
+                        process_env.pop(key, None)
                 process = subprocess.Popen(
                     cmd,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     text=True,
                     bufsize=1,
-                    env=ytdlp_subprocess_env(),
+                    env=process_env,
                 )
                 for raw_line in iter(process.stdout.readline, ''):
                     line = sanitize_sensitive_output(raw_line.strip())
@@ -406,23 +430,50 @@ def _run_download_job(job_id: str) -> None:
                     if format_match:
                         expected_streams = 2 if '+' in format_match.group(1) else 1
 
+                    retry_match = re.search(r'Retrying\s*\((\d+)/(\d+)\)', line, re.IGNORECASE)
+                    if retry_match or (
+                        'got error' in line.lower() and 'ssl' in line.lower()
+                    ):
+                        retry_label = (
+                            f'{retry_match.group(1)}/{retry_match.group(2)}'
+                            if retry_match else ''
+                        )
+                        stage = '音频' if completed_streams >= 1 or (
+                            expected_streams > 1 and previous_stream_percent >= 99
+                        ) else '视频'
+                        _set_download_job(
+                            job_id,
+                            status='downloading',
+                            progress_known=current_progress > 0,
+                            message=(
+                                f'网络不稳，正在重试{stage}下载'
+                                + (f'（{retry_label}）' if retry_label else '')
+                            ),
+                        )
+                        continue
+
                     percent_match = re.search(r'\[download\]\s+([0-9.]+)%', line)
                     if percent_match:
                         stream_percent = float(percent_match.group(1))
                         if previous_stream_percent >= 99 and stream_percent < previous_stream_percent:
                             completed_streams = min(expected_streams - 1, completed_streams + 1)
                         overall_fraction = (completed_streams + stream_percent / 100) / expected_streams
-                        progress = min(95, max(0, int(overall_fraction * 95)))
+                        current_progress = min(95, max(0, int(overall_fraction * 95)))
                         previous_stream_percent = stream_percent
+                        if job['platform'] == 'youtube':
+                            progress_message = f'正在下载 {quality}p 音视频'
+                        elif expected_streams > 1 and completed_streams >= 1:
+                            progress_message = '正在下载音频'
+                        elif expected_streams > 1:
+                            progress_message = '正在下载视频画面'
+                        else:
+                            progress_message = '正在下载视频'
                         _set_download_job(
                             job_id,
                             status='downloading',
-                            progress=progress,
-                            message=(
-                                f'正在下载 {quality}p 音视频'
-                                if job['platform'] == 'youtube'
-                                else '正在下载视频'
-                            ),
+                            progress=current_progress,
+                            progress_known=True,
+                            message=progress_message,
                         )
                     elif '[Merger]' in line or '[VideoRemuxer]' in line or '[Fixup' in line:
                         _set_download_job(job_id, status='merging', progress=99, message='正在合并音视频')
@@ -458,12 +509,14 @@ def _run_download_job(job_id: str) -> None:
                     return
                 output_tail.append('Downloaded file does not exist')
 
-            last_error = '\n'.join(output_tail[-8:]) or 'Download failed'
+            last_error = _download_failure_summary(output_tail) or 'Download failed'
             retryable = any(token in last_error.lower() for token in (
                 'bot', 'sign in', 'challenge', 'proxy', 'timeout', 'timed out',
                 'connection', 'network', 'http error 403', 'http error 429',
                 'requested format is not available', 'only images are available',
                 'no video formats found',
+                # B站等平台常见的连接中途被掐断，属于可重试的瞬时网络问题
+                'ssl', 'eof', 'reset by peer', 'broken pipe',
             ))
             if attempt < len(routes) and retryable:
                 continue
@@ -473,8 +526,28 @@ def _run_download_job(job_id: str) -> None:
             job_id,
             status='error',
             message='下载失败',
-            error=sanitize_sensitive_output(last_error)[-800:],
+            error=downloader._parse_error(last_error),
         )
+
+
+def _download_failure_summary(output_tail) -> str:
+    """从 yt-dlp 输出尾部提取真正的失败原因，避免把进度百分比当成错误。"""
+    lines = [line for line in (output_tail or []) if line]
+    if not lines:
+        return ''
+    error_lines = [
+        line for line in lines
+        if line.startswith('ERROR:') or 'Giving up after' in line or 'Got error:' in line
+    ]
+    if error_lines:
+        return '\n'.join(error_lines[-6:])
+    # 没有明确 ERROR 时，丢掉纯进度行再取尾部
+    meaningful = [
+        line for line in lines
+        if not re.search(r'\[download\]\s+[0-9.]+%', line)
+        and 'ETA' not in line
+    ]
+    return '\n'.join((meaningful or lines)[-8:])
 
 
 def _run_youtube_download_job(job_id: str) -> None:

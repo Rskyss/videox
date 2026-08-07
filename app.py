@@ -839,6 +839,7 @@ def proxy_download():
         video_url: 视频直链URL (需要URL编码)
         filename: 文件名
         is_dash: 是否为DASH格式 (可选，默认false)
+        quality: YouTube 清晰度 360/720/1080（可选）
     
     Returns:
         视频文件流
@@ -846,6 +847,7 @@ def proxy_download():
     video_url = request.args.get('video_url', '').strip()
     filename = request.args.get('filename', 'video.mp4').strip()
     is_dash = request.args.get('is_dash', 'false').lower() == 'true'
+    quality = request.args.get('quality', '720').strip() or '720'
     
     if not video_url:
         return jsonify({
@@ -859,7 +861,7 @@ def proxy_download():
         
         # 对于DASH格式，使用yt-dlp下载并合并
         if is_dash:
-            return download_with_ytdlp(video_url, filename)
+            return download_with_ytdlp(video_url, filename, quality=quality)
         
         # 非DASH格式，直接代理下载
         return proxy_direct_download(video_url, filename)
@@ -1106,7 +1108,7 @@ def proxy_direct_download(video_url: str, filename: str):
         }), 500
 
 
-def download_with_ytdlp(video_url: str, filename: str):
+def download_with_ytdlp(video_url: str, filename: str, quality: str = '720'):
     """使用yt-dlp下载（用于DASH/HLS格式，自动合并视频和音频）"""
     try:
         temp_dir = tempfile.gettempdir()
@@ -1120,6 +1122,8 @@ def download_with_ytdlp(video_url: str, filename: str):
         youtube_attempts = downloader.proxy_manager.get_proxies()[:3] + [None] if is_youtube else [None]
         max_retries = len(youtube_attempts)
         result = None
+        if quality not in YOUTUBE_QUALITY_SELECTORS:
+            quality = '720'
 
         for attempt in range(max_retries):
             cmd = [
@@ -1138,8 +1142,9 @@ def download_with_ytdlp(video_url: str, filename: str):
 
             if is_youtube:
                 proxy = youtube_attempts[attempt]
+                cmd.extend(['-f', YOUTUBE_QUALITY_SELECTORS[quality]])
                 cmd.extend(downloader.youtube_args(proxy))
-                app.logger.info(f"[尝试 {attempt + 1}/{max_retries}] 使用YouTube下载线路")
+                app.logger.info(f"[尝试 {attempt + 1}/{max_retries}] 使用YouTube下载线路 quality={quality}")
 
             if is_twitter:
                 cmd.extend(["--extractor-args", "twitter:multiple_video=1"])

@@ -1,4 +1,4 @@
-"""下载页面前后端契约的静态测试。"""
+"""下载页面前后端契约的静态测试（web 分支：浏览器原生下载）。"""
 
 import re
 import unittest
@@ -17,23 +17,17 @@ class FrontendDownloadContractTestCase(unittest.TestCase):
         self.assertEqual(values, {'360', '720', '1080'})
         self.assertIn('<option value="720" data-i18n="quality-720" selected>', self.html)
 
-    def test_all_platforms_use_background_job_api(self):
-        self.assertIn("fetch('/download-jobs'", self.script)
-        self.assertIn('created.status_url', self.script)
-        self.assertIn('job.download_url', self.script)
-        self.assertIn('media_url: videoInfo.url', self.script)
-        self.assertIn('is_dash: Boolean(videoInfo.is_dash)', self.script)
-        self.assertNotIn('startDashDownload(', self.script)
-        self.assertNotIn('/proxy-download?', self.script)
+    def test_browser_native_download_via_proxy(self):
+        self.assertIn('/proxy-download?', self.script)
+        self.assertIn('startBrowserDownload(', self.script)
+        self.assertIn("link.download = filename", self.script)
+        self.assertNotIn("fetch('/download-jobs'", self.script)
+        self.assertNotIn('download-progress', self.html)
+        self.assertNotIn('role="progressbar"', self.html)
 
-    def test_non_json_gateway_errors_are_handled(self):
-        self.assertIn("response.status === 504", self.script)
+    def test_non_json_parse_errors_are_handled(self):
         self.assertIn("contentType.includes('application/json')", self.script)
-        self.assertNotIn('response.json().then', self.script)
-
-    def test_progress_bar_is_accessible(self):
-        self.assertIn('role="progressbar"', self.html)
-        self.assertIn("setAttribute('aria-valuenow'", self.script)
+        self.assertIn('parseApiResponse(', self.script)
 
     def test_old_360_only_claim_is_removed(self):
         combined = f'{self.html}\n{self.script}'.lower()

@@ -111,7 +111,7 @@
           "name": "Which platforms are supported?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Douyin, Bilibili, Xiaohongshu, YouTube, TikTok and Twitter/X. YouTube currently supports 360p only, because it serves high-definition video and audio as separate streams."
+            "text": "Douyin, Bilibili, Xiaohongshu, YouTube, TikTok and Twitter/X. YouTube supports 360p, 720p and 1080p downloads; HD audio and video streams are merged automatically."
           }
         },
         {
@@ -127,7 +127,7 @@
           "name": "Do you store the videos I download?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "No. We do not store or cache any video content. Files are streamed directly to your device and all rights remain with the original owners."
+            "text": "Downloads from every supported platform use temporary server storage. The temporary file is deleted after transfer or expires automatically within one hour."
           }
         }
       ]
@@ -209,6 +209,24 @@
                                     <p id="video-size" class="meta-value">--</p>
                                 </div>
                             </div>
+                            <div id="quality-control" class="quality-control" style="display: none;">
+                                <label for="quality-select" data-i18n="quality-label">Quality</label>
+                                <select id="quality-select" class="quality-select">
+                                    <option value="360" data-i18n="quality-360">360p · Fast</option>
+                                    <option value="720" data-i18n="quality-720" selected>720p · Recommended</option>
+                                    <option value="1080" data-i18n="quality-1080">1080p · HD</option>
+                                </select>
+                            </div>
+                            <div id="download-progress" class="download-progress" role="progressbar"
+                                aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="display: none;">
+                                <div class="download-progress-info">
+                                    <span id="download-status">Preparing download</span>
+                                    <span id="download-percent">0%</span>
+                                </div>
+                                <div class="download-progress-track">
+                                    <div id="download-progress-bar" class="download-progress-bar"></div>
+                                </div>
+                            </div>
                             <button id="download-btn" class="download-btn">
                                 <svg class="icon download-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
                                     stroke-width="1.5" stroke="currentColor">
@@ -277,8 +295,7 @@
                     <details class="faq-item">
                         <summary class="faq-question" data-i18n="faq-q3">Which platforms are supported?</summary>
                         <p class="faq-answer" data-i18n="faq-a3">Douyin, Bilibili, Xiaohongshu, YouTube, TikTok and
-                            Twitter/X. YouTube currently supports 360p only, because it serves high-definition video
-                            and audio as separate streams.</p>
+                            Twitter/X. YouTube supports 360p, 720p and 1080p; HD audio and video streams are merged automatically.</p>
                     </details>
                     <details class="faq-item">
                         <summary class="faq-question" data-i18n="faq-q4">Why did my link fail to parse?</summary>
@@ -287,8 +304,8 @@
                     </details>
                     <details class="faq-item">
                         <summary class="faq-question" data-i18n="faq-q5">Do you store the videos I download?</summary>
-                        <p class="faq-answer" data-i18n="faq-a5">No. We do not store or cache any video content. Files
-                            are streamed directly to your device and all rights remain with the original owners.</p>
+                        <p class="faq-answer" data-i18n="faq-a5">Downloads from every supported platform use temporary
+                            server storage. The file is deleted after transfer or expires automatically within one hour.</p>
                     </details>
                 </div>
             </section>
@@ -306,8 +323,8 @@
                     <div class="side-text">
                         <p class="highlight">⚠️ AI 实验产品说明</p>
                         <p>本工具目前处于实验阶段，主要用于技术探索和交流</p>
-                        <p class="warning-text"><strong>YouTube 高清视频因官方分离音视频并限制获取，暂不支持。</strong>本工具现可正常下载 360p。</p>
-                        <p>✅ 其他平台（抖音、B站、小红书、Twitter/x、tiktok）解析不受影响，可正常使用。</p>
+                        <p class="warning-text"><strong>全平台下载进度已支持。</strong>YouTube 可选择 360p、720p 或 1080p，服务器会自动合并音视频。</p>
+                        <p>✅ 抖音、B站、小红书、YouTube、Twitter/X、TikTok 均使用统一进度任务。</p>
                         <p>有问题记得关注私信哦~</p>
                     </div>
 
@@ -331,8 +348,8 @@
                     <button id="lang-en" class="lang-btn" data-lang="en">English</button>
                 </div>
                 <p data-i18n="footer-info">Built with yt-dlp | For educational use only</p>
-                <p class="disclaimer" data-i18n="footer-disclaimer">We do not store or cache any video content on this
-                    website. All videos and images belong to their respective owners and source websites.</p>
+                <p class="disclaimer" data-i18n="footer-disclaimer">Download processing files are temporary and expire automatically.
+                    All videos and images belong to their respective owners and source websites.</p>
             </footer>
         </div>
     </div>

@@ -11,7 +11,7 @@ const translations = {
         'download-btn': '下载视频',
         'platforms-support': '支持以下平台的视频解析，类型不断增加中',
         'footer-info': '基于 yt-dlp 构建 | 仅供学习使用',
-        'footer-disclaimer': '本网站不存储或缓存任何视频内容。所有视频和图片均属于其各自所有者和源网站。',
+        'footer-disclaimer': '下载处理文件仅临时保存并自动过期。所有视频和图片均属于其各自所有者和源网站。',
         'parsing': '解析中...',
         'env-check-passed': '✅ 环境检查通过，可以开始使用',
         'env-check-installing': '检测到 yt-dlp 未安装，正在自动安装...',
@@ -28,17 +28,27 @@ const translations = {
         'download-processing': '服务器处理中',
         'download-processing-hint': '正在下载并合并音视频流，请耐心等待...',
         'download-btn-retry': '重新下载',
+        'quality-label': '清晰度',
+        'quality-360': '360p · 快速',
+        'quality-720': '720p · 推荐',
+        'quality-1080': '1080p · 高清',
+        'download-queued': '任务排队中',
+        'download-downloading': '正在下载视频',
+        'download-merging-status': '正在合并音视频',
+        'download-ready': '处理完成，正在开始下载',
+        'download-timeout': '下载任务超时，请稍后重试',
+        'server-timeout': '服务器处理超时，请稍后重试',
         'faq-heading': '常见问题',
         'faq-q1': '视频解析神器是免费的吗？',
         'faq-a1': '完全免费。无需注册、无需安装软件，也不收取任何费用。',
         'faq-q2': '下载的视频有水印吗？',
         'faq-a2': '没有。抖音、TikTok、B站、小红书解析后的视频均为无水印，并保留原始清晰度。',
         'faq-q3': '支持哪些平台？',
-        'faq-a3': '抖音、B站、小红书、YouTube、TikTok、Twitter/X。其中 YouTube 因官方将高清视频与音频分离，目前仅支持 360p。',
+        'faq-a3': '支持抖音、B站、小红书、YouTube、TikTok、Twitter/X。YouTube 支持 360p、720p 和 1080p，高清音视频会自动合并。',
         'faq-q4': '为什么链接解析失败？',
         'faq-a4': '可能是链接不正确，或视频已被删除、设为私密、仍在审核中。请重新复制分享链接后再试一次。',
         'faq-q5': '会保存我下载的视频吗？',
-        'faq-a5': '不会。我们不存储也不缓存任何视频内容，文件直接传输到你的设备，所有权利仍归原作者所有。'
+        'faq-a5': '所有平台的下载任务仅使用临时服务器空间；文件传输结束后删除，未下载文件也会在一小时内自动过期。'
     },
     en: {
         'page-title': 'Free Video Downloader – TikTok, Douyin, Bilibili | VideoX',
@@ -51,7 +61,7 @@ const translations = {
         'download-btn': 'Download Video',
         'platforms-support': 'Support video analysis for the following platforms, The types are constantly increasing.',
         'footer-info': 'Built with yt-dlp | For educational use only',
-        'footer-disclaimer': 'We do not store or cache any video content on this website. All videos and images belong to their respective owners and source websites.',
+        'footer-disclaimer': 'Download processing files are temporary and expire automatically. All videos and images belong to their respective owners and source websites.',
         'parsing': 'Parsing...',
         'env-check-passed': '✅ Environment check passed, ready to use',
         'env-check-installing': 'Detected yt-dlp not installed, installing automatically...',
@@ -68,17 +78,27 @@ const translations = {
         'download-processing': 'Server processing',
         'download-processing-hint': 'Downloading and merging audio/video streams, please wait...',
         'download-btn-retry': 'Re-download',
+        'quality-label': 'Quality',
+        'quality-360': '360p · Fast',
+        'quality-720': '720p · Recommended',
+        'quality-1080': '1080p · HD',
+        'download-queued': 'Waiting in queue',
+        'download-downloading': 'Downloading video',
+        'download-merging-status': 'Merging audio and video',
+        'download-ready': 'Ready, starting download',
+        'download-timeout': 'Download task timed out. Please try again later.',
+        'server-timeout': 'Server processing timed out. Please try again later.',
         'faq-heading': 'Frequently Asked Questions',
         'faq-q1': 'Is VideoX free to use?',
         'faq-a1': 'Yes. VideoX is completely free. No registration, no software installation and no payment is required.',
         'faq-q2': 'Do downloaded videos have a watermark?',
         'faq-a2': 'No. Videos parsed from Douyin, TikTok, Bilibili and Xiaohongshu are saved without watermarks and keep their original resolution.',
         'faq-q3': 'Which platforms are supported?',
-        'faq-a3': 'Douyin, Bilibili, Xiaohongshu, YouTube, TikTok and Twitter/X. YouTube currently supports 360p only, because it serves high-definition video and audio as separate streams.',
+        'faq-a3': 'Douyin, Bilibili, Xiaohongshu, YouTube, TikTok and Twitter/X are supported. YouTube supports 360p, 720p and 1080p with automatic HD audio/video merging.',
         'faq-q4': 'Why did my link fail to parse?',
         'faq-a4': 'The link may be incorrect, or the video has been deleted, set to private or is still under review. Copy the share link again and retry.',
         'faq-q5': 'Do you store the videos I download?',
-        'faq-a5': 'No. We do not store or cache any video content. Files are streamed directly to your device and all rights remain with the original owners.'
+        'faq-a5': 'Downloads from every supported platform use temporary server storage. Files are deleted after transfer, and unclaimed files expire automatically within one hour.'
     }
 };
 
@@ -86,8 +106,7 @@ const translations = {
 const appState = {
     isLoading: false,
     isDownloading: false,
-    downloadTimer: null,
-    downloadSeconds: 0,
+    downloadJobId: null,
     videoInfo: null,
     error: null,
     currentLang: 'en'
@@ -107,6 +126,12 @@ const elements = {
     videoTitle: document.getElementById('video-title'),
     videoDuration: document.getElementById('video-duration'),
     videoSize: document.getElementById('video-size'),
+    qualityControl: document.getElementById('quality-control'),
+    qualitySelect: document.getElementById('quality-select'),
+    downloadProgress: document.getElementById('download-progress'),
+    downloadStatus: document.getElementById('download-status'),
+    downloadPercent: document.getElementById('download-percent'),
+    downloadProgressBar: document.getElementById('download-progress-bar'),
     downloadBtn: document.getElementById('download-btn'),
     envStatus: document.getElementById('env-status'),
     urlForm: document.getElementById('url-form')
@@ -377,7 +402,7 @@ async function handleExtract(e) {
             body: JSON.stringify({ url })
         });
 
-        const data = await response.json();
+        const data = await parseApiResponse(response);
 
         if (!data.success) {
             throw new Error(data.error || data.message || translations[appState.currentLang]['parse-failed']);
@@ -478,6 +503,12 @@ function displayVideoInfo(videoInfo) {
         elements.videoSize.textContent = '--';
     }
 
+    const isYouTube = videoInfo.platform === 'YouTube' ||
+        (videoInfo.page_url && /(?:youtube\.com|youtu\.be)/i.test(videoInfo.page_url));
+    elements.qualityControl.style.display = isYouTube ? 'flex' : 'none';
+    elements.qualitySelect.value = '720';
+    resetDownloadProgress();
+
     // 显示视频结果
     showVideoResult();
 }
@@ -491,6 +522,8 @@ function showVideoResult() {
 function hideVideoResult() {
     elements.videoResult.style.display = 'none';
     elements.clearBtn.style.display = 'none';
+    elements.qualityControl.style.display = 'none';
+    resetDownloadProgress();
 }
 
 // 处理下载
@@ -505,75 +538,133 @@ function handleDownload() {
     }
 
     const videoInfo = appState.videoInfo;
-    const isDash = videoInfo.is_dash || false;
     const filename = `${videoInfo.title}.${videoInfo.ext || 'mp4'}`;
 
     const isYouTube = videoInfo.platform === 'YouTube' ||
-                      (videoInfo.url && videoInfo.url.includes('googlevideo.com'));
-
-    if (isYouTube && !isDash) {
-        window.open(videoInfo.url, '_blank');
-        showEnvAlert(translations[appState.currentLang]['download-started'], 'success');
-        setTimeout(() => { hideEnvAlert(); }, 3000);
-        return;
-    }
-
-    const proxyUrl = `/proxy-download?video_url=${encodeURIComponent(videoInfo.url)}&filename=${encodeURIComponent(filename)}&is_dash=${isDash}`;
-
-    if (isDash) {
-        startDashDownload(proxyUrl, filename);
-    } else {
-        setDownloadingState(true);
-        const link = document.createElement('a');
-        link.href = proxyUrl;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        showEnvAlert(translations[appState.currentLang]['download-started'], 'success');
-        setTimeout(() => { hideEnvAlert(); }, 3000);
-        setTimeout(() => { setDownloadingState(false); }, 5000);
-    }
+        (videoInfo.page_url && /(?:youtube\.com|youtu\.be)/i.test(videoInfo.page_url));
+    const quality = isYouTube ? (elements.qualitySelect.value || '720') : 'best';
+    startDownloadJob(videoInfo, filename, quality);
 }
 
-// DASH/HLS下载：使用fetch追踪进度，避免重复点击
-function startDashDownload(proxyUrl, filename) {
-    setDownloadingState(true);
-    startDownloadTimer();
+async function parseApiResponse(response) {
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+        let data;
+        try {
+            data = await response.json();
+        } catch (error) {
+            throw new Error(`Invalid server response (HTTP ${response.status})`);
+        }
+        if (!response.ok) {
+            throw new Error(data.error || data.message || `HTTP ${response.status}`);
+        }
+        return data;
+    }
 
-    fetch(proxyUrl)
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(err => { throw new Error(err.error || err.message || 'Download failed'); });
-            }
-            const contentLength = response.headers.get('Content-Length');
-            if (contentLength) {
-                updateDownloadBtnText(
-                    translations[appState.currentLang]['download-processing'],
-                    `${formatBytes(parseInt(contentLength))}`
-                );
-            }
-            return response.blob();
-        })
-        .then(blob => {
-            stopDownloadTimer();
-            const blobUrl = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = blobUrl;
-            link.download = filename;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
-            setDownloadingState(false);
-            showEnvAlert(translations[appState.currentLang]['download-started'], 'success');
-            setTimeout(() => { hideEnvAlert(); }, 3000);
-        })
-        .catch(error => {
-            stopDownloadTimer();
-            setDownloadingState(false);
-            showError(error.message);
+    if (response.status === 504) {
+        throw new Error(translations[appState.currentLang]['server-timeout']);
+    }
+    throw new Error(`Server returned HTTP ${response.status}`);
+}
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function updateJobProgress(status, progress, message, progressKnown = true) {
+    const percent = Math.min(100, Math.max(0, Number(progress) || 0));
+    let localizedStatus = message || translations[appState.currentLang]['download-processing'];
+    if (status === 'queued') localizedStatus = translations[appState.currentLang]['download-queued'];
+    if (status === 'downloading') localizedStatus = translations[appState.currentLang]['download-downloading'];
+    if (status === 'merging') localizedStatus = translations[appState.currentLang]['download-merging-status'];
+    if (status === 'ready') localizedStatus = translations[appState.currentLang]['download-ready'];
+
+    elements.downloadProgress.style.display = 'block';
+    elements.downloadStatus.textContent = localizedStatus;
+    elements.downloadProgressBar.classList.toggle('indeterminate', progressKnown === false);
+    elements.downloadPercent.textContent = progressKnown === false ? '…' : `${Math.round(percent)}%`;
+    elements.downloadProgressBar.style.width = progressKnown === false ? '35%' : `${percent}%`;
+    if (progressKnown === false) {
+        elements.downloadProgress.removeAttribute('aria-valuenow');
+        elements.downloadProgress.setAttribute('aria-valuetext', localizedStatus);
+    } else {
+        elements.downloadProgress.setAttribute('aria-valuenow', String(Math.round(percent)));
+        elements.downloadProgress.removeAttribute('aria-valuetext');
+    }
+    updateDownloadBtnText(localizedStatus, progressKnown === false ? '…' : `${Math.round(percent)}%`);
+}
+
+function resetDownloadProgress() {
+    elements.downloadProgress.style.display = 'none';
+    elements.downloadStatus.textContent = '';
+    elements.downloadPercent.textContent = '0%';
+    elements.downloadProgressBar.style.width = '0%';
+    elements.downloadProgressBar.classList.remove('indeterminate');
+    elements.downloadProgress.setAttribute('aria-valuenow', '0');
+    elements.downloadProgress.removeAttribute('aria-valuetext');
+}
+
+async function startDownloadJob(videoInfo, filename, quality) {
+    setDownloadingState(true);
+    clearError();
+    updateJobProgress('queued', 0);
+
+    try {
+        const createResponse = await fetch('/download-jobs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                url: videoInfo.page_url || videoInfo.url,
+                media_url: videoInfo.url,
+                platform: videoInfo.platform,
+                is_dash: Boolean(videoInfo.is_dash),
+                expected_size: Number(videoInfo.size) || 0,
+                filename,
+                quality
+            })
         });
+        const created = await parseApiResponse(createResponse);
+        appState.downloadJobId = created.job_id;
+
+        const startedAt = Date.now();
+        while (appState.isDownloading && appState.downloadJobId === created.job_id) {
+            if (Date.now() - startedAt > 20 * 60 * 1000) {
+                throw new Error(translations[appState.currentLang]['download-timeout']);
+            }
+
+            await sleep(1000);
+            const statusResponse = await fetch(created.status_url, { cache: 'no-store' });
+            const job = await parseApiResponse(statusResponse);
+
+            if (job.status === 'error') {
+                throw new Error(job.error || job.message || 'Download failed');
+            }
+
+            updateJobProgress(job.status, job.progress, job.message, job.progress_known);
+            if (job.status === 'ready' && job.download_url) {
+                const link = document.createElement('a');
+                link.href = job.download_url;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                appState.downloadJobId = null;
+                setDownloadingState(false);
+                showEnvAlert(translations[appState.currentLang]['download-started'], 'success');
+                setTimeout(() => {
+                    hideEnvAlert();
+                    resetDownloadProgress();
+                }, 3000);
+                return;
+            }
+        }
+    } catch (error) {
+        appState.downloadJobId = null;
+        setDownloadingState(false);
+        resetDownloadProgress();
+        showError(error instanceof Error ? error.message : translations[appState.currentLang]['unknown-error']);
+    }
 }
 
 function setDownloadingState(downloading) {
@@ -594,36 +685,11 @@ function setDownloadingState(downloading) {
 }
 
 
-function startDownloadTimer() {
-    appState.downloadSeconds = 0;
-    updateDownloadBtnText(translations[appState.currentLang]['download-processing'], '0s');
-    appState.downloadTimer = setInterval(() => {
-        appState.downloadSeconds++;
-        updateDownloadBtnText(
-            translations[appState.currentLang]['download-processing'],
-            `${appState.downloadSeconds}s`
-        );
-    }, 1000);
-}
-
-function stopDownloadTimer() {
-    if (appState.downloadTimer) {
-        clearInterval(appState.downloadTimer);
-        appState.downloadTimer = null;
-    }
-}
-
 function updateDownloadBtnText(label, detail) {
     const btnTextEl = elements.downloadBtn.querySelector('span');
     if (btnTextEl) {
         btnTextEl.textContent = `${label} (${detail})`;
     }
-}
-
-function formatBytes(bytes) {
-    if (!bytes || bytes <= 0) return '';
-    const mb = bytes / (1024 * 1024);
-    return mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb.toFixed(1)} MB`;
 }
 
 // 检查侧边通知是否应该显示

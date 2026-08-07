@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目概述
 
-这是一个基于 Flask 和 yt-dlp 的云端视频解析下载工具,支持抖音、YouTube、B站、Twitter/X 等多个视频平台。核心特性是**零存储**:服务器仅解析视频链接,返回直接下载URL,用户通过浏览器直接下载到本地,服务器不保存视频文件。
+这是一个基于 Flask 和 yt-dlp 的云端视频解析下载工具,支持抖音、YouTube、B站、小红书、TikTok、Twitter/X。下载阶段使用统一后台任务：服务器临时下载/合并并报告进度，文件传输结束后删除，未领取文件一小时自动过期。
 
 ## 常用命令
 
@@ -67,15 +67,18 @@ URL提取和验证 (utils.extract_url_from_text)
     ├─ 抖音 → DouyinService._parse_douyin_video (API直接获取)
     └─ 其他 → VideoDownloader._parse_video_with_ytdlp
         ↓
-    返回视频元信息 (标题、大小、时长、下载链接)
+    返回视频元信息 (标题、大小、时长、媒体/页面链接)
         ↓
-    前端直接发起下载 (浏览器下载/服务器代理)
+    POST /download-jobs 创建统一后台任务
+        ↓
+    前端轮询进度,完成后从 /download-jobs/<id>/file 下载
 ```
 
 **关键设计**:
-- 服务器不存储视频文件
-- 返回的 `video_info.url` 是直接下载链接
-- B站等DASH格式视频(`is_dash=true`)需通过 `/proxy-download` 端点由服务器用yt-dlp合并音视频流
+- 服务器仅使用临时任务目录,文件传输后删除,未领取文件一小时过期
+- 普通媒体直链按字节报告进度,DASH/HLS 由 yt-dlp 下载并合并
+- YouTube 支持 360p、720p、1080p,其他平台选择最佳可用格式
+- 下载并发上限为2,待处理任务上限为12
 
 ### 3. 平台特殊处理
 
@@ -131,6 +134,9 @@ URL提取和验证 (utils.extract_url_from_text)
 |------|------|----------|
 | `/proxy-thumbnail` | 代理缩略图 | B站/抖音防盗链(Referer验证) |
 | `/proxy-download` | 代理视频下载 | B站DASH格式、跨域下载 |
+| `POST /download-jobs` | 创建统一下载任务 | 全部支持平台 |
+| `GET /download-jobs/<id>` | 查询任务状态和进度 | 全部支持平台 |
+| `GET /download-jobs/<id>/file` | 下载完成文件并触发清理 | 全部支持平台 |
 
 **Referer 自动判断** (app.py:40-63 get_platform_referer):
 根据URL域名自动设置对应平台的 Referer,避免403错误
@@ -151,7 +157,7 @@ URL提取和验证 (utils.extract_url_from_text)
 ### 部署相关
 
 1. **端口一致性**: 确保 app.py 和 start.sh 的端口配置一致
-2. **零存储特性**: 不要添加视频本地存储功能
+2. **临时存储边界**: 仅允许任务目录临时保存；必须保留传输后删除和一小时过期清理
 3. **代理配置**: YouTube受限地区需配置 WEBSHARE_API_TOKEN 或 YOUTUBE_PROXY
 4. **Cookies文件**:
    - 位置: 项目根目录 `cookies.txt`

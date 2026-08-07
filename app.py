@@ -7,28 +7,477 @@ Flask主应用
 import os
 import sys
 import json
+import glob
+import re
+import shutil
 import subprocess
 import tempfile
+import threading
 import time
+import uuid
 import http.cookiejar
 
 # 第三方库导入
 from flask import Flask, render_template, request, jsonify, Response, stream_with_context, send_from_directory
 import requests
-from urllib.parse import unquote, quote
+from urllib.parse import unquote, quote, urlparse
 
 from simple_tracker import tracker
 # 本地模块导入
-from downloader import VideoDownloader, YTDLP_CMD
-from utils import check_ytdlp, install_ytdlp
+from downloader import (
+    VideoDownloader,
+    YTDLP_CMD,
+    sanitize_sensitive_output,
+    ytdlp_subprocess_env,
+)
+from utils import check_ytdlp, install_ytdlp, validate_url
 
 
 app = Flask(__name__)
 downloader = VideoDownloader()
 
+DOWNLOAD_JOB_ROOT = os.path.join(tempfile.gettempdir(), 'videox_download_jobs')
+DOWNLOAD_JOB_TTL_SECONDS = 60 * 60
+DOWNLOAD_JOB_TIMEOUT_SECONDS = 15 * 60
+DOWNLOAD_JOB_MAX_CONCURRENT = 2
+DOWNLOAD_JOB_MAX_PENDING = 12
+YOUTUBE_QUALITY_SELECTORS = {
+    '360': '18/b[height<=360][ext=mp4]/bv[height<=360][vcodec^=avc1]+ba[ext=m4a]/bv[height<=360]+ba/b[height<=360]',
+    '720': 'bv[height<=720][vcodec^=avc1]+ba[ext=m4a]/bv[height<=720]+ba/b[height<=720]',
+    '1080': 'bv[height<=1080][vcodec^=avc1]+ba[ext=m4a]/bv[height<=1080]+ba/b[height<=1080]',
+}
+SUPPORTED_DOWNLOAD_PLATFORMS = {
+    'douyin', 'bilibili', 'xiaohongshu', 'youtube', 'tiktok', 'twitter',
+}
+PLATFORM_MEDIA_DOMAINS = {
+    'douyin': ('douyin.com', 'douyinvod.com', 'snssdk.com', 'bytecdn.cn', 'zijieapi.com'),
+    'bilibili': ('bilibili.com', 'bilivideo.com', 'hdslb.com'),
+    'xiaohongshu': ('xiaohongshu.com', 'xhscdn.com'),
+    'youtube': ('youtube.com', 'youtu.be', 'googlevideo.com'),
+    'tiktok': ('tiktok.com', 'tiktokv.com', 'tiktokcdn.com', 'byteoversea.com', 'ibytedtos.com'),
+    'twitter': ('twitter.com', 'x.com', 'twimg.com'),
+}
+download_jobs = {}
+download_jobs_lock = threading.Lock()
+download_job_slots = threading.BoundedSemaphore(DOWNLOAD_JOB_MAX_CONCURRENT)
+
 # 强制 stdout 和 stderr 不缓冲
 sys.stdout.flush()
 sys.stderr.flush()
+
+
+def _safe_job_filename(filename: str) -> str:
+    """生成只用于 Content-Disposition 的安全文件名。"""
+    filename = os.path.basename((filename or 'video.mp4').strip())
+    stem = os.path.splitext(filename)[0]
+    stem = re.sub(r'[\\/:*?"<>|\x00-\x1f]', '_', stem).strip(' ._')
+    return f"{(stem or 'video')[:180]}.mp4"
+
+
+def _normalize_download_platform(source_url: str, platform_hint: str = ''):
+    """把解析器展示名称收敛为下载任务使用的平台键。"""
+    detected = detect_platform(source_url)
+    if detected in SUPPORTED_DOWNLOAD_PLATFORMS:
+        return detected
+    normalized_hint = re.sub(r'[^a-z0-9\u4e00-\u9fff]', '', platform_hint.lower())
+    aliases = {
+        '抖音': 'douyin',
+        'douyin': 'douyin',
+        'b站': 'bilibili',
+        'bilibili': 'bilibili',
+        '小红书': 'xiaohongshu',
+        'xiaohongshu': 'xiaohongshu',
+        'youtube': 'youtube',
+        'tiktok': 'tiktok',
+        'twitter': 'twitter',
+        'twitterx': 'twitter',
+    }
+    return aliases.get(normalized_hint)
+
+
+def _host_matches_domains(hostname: str, domains) -> bool:
+    hostname = (hostname or '').lower().rstrip('.')
+    return any(hostname == domain or hostname.endswith(f'.{domain}') for domain in domains)
+
+
+def _safe_direct_media_url(media_url: str, platform: str):
+    """仅允许解析结果指向该平台的已知媒体域名，避免任务接口成为任意代理。"""
+    valid, _ = validate_url(media_url)
+    if not valid:
+        return None
+    hostname = urlparse(media_url).hostname or ''
+    if _host_matches_domains(hostname, PLATFORM_MEDIA_DOMAINS.get(platform, ())):
+        return media_url
+    return None
+
+
+def _set_download_job(job_id: str, **updates) -> None:
+    with download_jobs_lock:
+        job = download_jobs.get(job_id)
+        if job is not None:
+            job.update(updates)
+            job['updated_at'] = time.time()
+
+
+def _download_job_snapshot(job_id: str):
+    with download_jobs_lock:
+        job = download_jobs.get(job_id)
+        if job is None:
+            return None
+        return {
+            'job_id': job_id,
+            'status': job['status'],
+            'progress': job.get('progress', 0),
+            'progress_known': job.get('progress_known', True),
+            'message': job.get('message', ''),
+            'error': job.get('error', ''),
+            'filename': job.get('filename', ''),
+            'quality': job.get('quality', ''),
+            'platform': job.get('platform', ''),
+        }
+
+
+def _remove_download_job_files(job) -> None:
+    job_dir = job.get('job_dir') if job else None
+    if job_dir and os.path.commonpath((DOWNLOAD_JOB_ROOT, job_dir)) == DOWNLOAD_JOB_ROOT:
+        shutil.rmtree(job_dir, ignore_errors=True)
+
+
+def _cleanup_expired_download_jobs() -> None:
+    cutoff = time.time() - DOWNLOAD_JOB_TTL_SECONDS
+    expired = []
+    with download_jobs_lock:
+        for job_id, job in list(download_jobs.items()):
+            if job.get('status') not in ('queued', 'downloading', 'merging', 'serving') and job.get('updated_at', 0) < cutoff:
+                expired.append(download_jobs.pop(job_id))
+    for job in expired:
+        _remove_download_job_files(job)
+
+
+def _download_job_cleanup_loop() -> None:
+    while True:
+        time.sleep(5 * 60)
+        _cleanup_expired_download_jobs()
+
+
+def _youtube_download_command(
+    url: str,
+    output_base: str,
+    quality: str,
+    proxy=None,
+    client: str = 'web_safari',
+):
+    cmd = [
+        YTDLP_CMD,
+        url,
+        '--no-playlist',
+        '--no-update',
+        '--newline',
+        '--progress',
+        '--concurrent-fragments', '4',
+        '--retries', '3',
+        '--fragment-retries', '3',
+        '--socket-timeout', '30',
+        '-f', YOUTUBE_QUALITY_SELECTORS[quality],
+        '-o', f'{output_base}.%(ext)s',
+        '--merge-output-format', 'mp4',
+        '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    ]
+    cmd.extend(downloader.youtube_args(proxy, client))
+    cookie_file = downloader.local_cookie_file
+    if cookie_file and os.path.exists(str(cookie_file)):
+        cmd.extend(['--cookies', str(cookie_file)])
+    return cmd
+
+
+def _platform_download_command(job, output_base: str, proxy=None, client=None):
+    """构造所有需要 yt-dlp 处理/合并的平台下载命令。"""
+    source_url = job['url']
+    platform = job['platform']
+    quality = job['quality']
+    if platform == 'youtube':
+        return _youtube_download_command(
+            source_url,
+            output_base,
+            quality,
+            proxy,
+            client or 'web_safari',
+        )
+
+    cmd = [
+        YTDLP_CMD,
+        source_url,
+        '--no-playlist',
+        '--no-update',
+        '--newline',
+        '--progress',
+        '--concurrent-fragments', '4',
+        '--retries', '3',
+        '--fragment-retries', '3',
+        '--socket-timeout', '30',
+        '-f', 'bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/bv*+ba/b',
+        '-o', f'{output_base}.%(ext)s',
+        '--merge-output-format', 'mp4',
+    ]
+    cmd.extend(downloader._platform_specific_args(source_url))
+    if platform == 'twitter':
+        cmd.extend(['--extractor-args', 'twitter:multiple_video=1'])
+    cookie_file = downloader._resolve_cookie_file(source_url)
+    if cookie_file:
+        cmd.extend(['--cookies', cookie_file])
+    return cmd
+
+
+def _direct_download_cookies(platform: str):
+    """读取直链下载确实需要的站点 Cookie。"""
+    if platform != 'tiktok':
+        return None
+    cookie_file = downloader.local_cookie_file
+    if not cookie_file or not os.path.exists(str(cookie_file)):
+        return None
+    cookies = {}
+    try:
+        jar = http.cookiejar.MozillaCookieJar(str(cookie_file))
+        jar.load(ignore_discard=True, ignore_expires=True)
+        for cookie in jar:
+            if 'tiktok.com' in cookie.domain:
+                cookies[cookie.name] = cookie.value
+    except OSError:
+        return None
+    return cookies or None
+
+
+def _run_direct_download_job(job_id: str, job, output_base: str) -> bool:
+    """流式保存平台媒体直链，并按字节更新任务进度。"""
+    media_url = job.get('media_url')
+    if not media_url:
+        return False
+    platform = job['platform']
+    expected_size = max(0, int(job.get('expected_size') or 0))
+    headers = {
+        'User-Agent': (
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+            'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        ),
+        'Referer': get_platform_referer(media_url),
+        'Accept': '*/*',
+        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+    }
+    _set_download_job(job_id, status='downloading', progress=0, message='正在下载视频', error='')
+    response = requests.get(
+        media_url,
+        headers=headers,
+        cookies=_direct_download_cookies(platform),
+        stream=True,
+        allow_redirects=True,
+        timeout=(15, 60),
+    )
+    response.raise_for_status()
+    total_size = int(response.headers.get('Content-Length') or expected_size or 0)
+    _set_download_job(job_id, progress_known=total_size > 0)
+    output_file = f'{output_base}.mp4'
+    downloaded = 0
+    last_progress = -1
+    with open(output_file, 'wb') as handle:
+        for chunk in response.iter_content(chunk_size=1024 * 512):
+            if not chunk:
+                continue
+            handle.write(chunk)
+            downloaded += len(chunk)
+            if total_size > 0:
+                progress = min(95, int(downloaded * 95 / total_size))
+                if progress != last_progress:
+                    _set_download_job(
+                        job_id,
+                        status='downloading',
+                        progress=progress,
+                        message='正在下载视频',
+                    )
+                    last_progress = progress
+            else:
+                _set_download_job(
+                    job_id,
+                    status='downloading',
+                    progress=0,
+                    progress_known=False,
+                    message=f'正在下载视频（{downloaded / 1024 / 1024:.1f} MB）',
+                )
+    if downloaded <= 0:
+        raise RuntimeError('Downloaded file is empty')
+    _set_download_job(
+        job_id,
+        status='ready',
+        progress=100,
+        message='处理完成，可以下载',
+        file_path=output_file,
+        file_size=downloaded,
+    )
+    return True
+
+
+def _run_download_job(job_id: str) -> None:
+    with download_job_slots:
+        with download_jobs_lock:
+            job = download_jobs.get(job_id)
+            if job is None:
+                return
+            job = dict(job)
+            job.setdefault('platform', _normalize_download_platform(job.get('url', '')) or 'youtube')
+            job.setdefault('media_url', None)
+            job.setdefault('expected_size', 0)
+            quality = job['quality']
+            job_dir = job['job_dir']
+
+        os.makedirs(job_dir, mode=0o700, exist_ok=True)
+        output_base = os.path.join(job_dir, 'video')
+        try:
+            if _run_direct_download_job(job_id, job, output_base):
+                return
+        except Exception as exc:
+            _set_download_job(
+                job_id,
+                status='downloading',
+                progress=0,
+                message='直链下载失败，正在切换解析线路',
+                error='',
+            )
+            app.logger.warning('直链下载失败，回退 yt-dlp: %s', sanitize_sensitive_output(str(exc)))
+
+        routes = [(None, None)]
+        if job['platform'] == 'youtube':
+            routes = []
+            for proxy in downloader.proxy_manager.get_proxies()[:3]:
+                routes.extend(((proxy, 'web_safari'), (proxy, 'android_vr')))
+            routes.extend(((None, 'web_safari'), (None, 'android_vr'), (None, 'tv')))
+        last_error = 'Download failed'
+
+        for attempt, (proxy, client) in enumerate(routes, start=1):
+            for path in glob.glob(f'{output_base}.*'):
+                try:
+                    os.remove(path)
+                except OSError:
+                    pass
+
+            _set_download_job(
+                job_id,
+                status='downloading',
+                progress=0,
+                message=(
+                    f'正在准备 {quality}p 下载线路（{attempt}/{len(routes)}）'
+                    if job['platform'] == 'youtube'
+                    else '正在准备下载'
+                ),
+                error='',
+            )
+            cmd = _platform_download_command(job, output_base, proxy, client)
+            output_tail = []
+            started_at = time.time()
+            expected_streams = 1
+            completed_streams = 0
+            previous_stream_percent = 0.0
+
+            try:
+                process = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1,
+                    env=ytdlp_subprocess_env(),
+                )
+                for raw_line in iter(process.stdout.readline, ''):
+                    line = sanitize_sensitive_output(raw_line.strip())
+                    if not line:
+                        continue
+                    output_tail.append(line)
+                    output_tail = output_tail[-40:]
+
+                    format_match = re.search(r'Downloading \d+ format\(s\):\s*(\S+)', line)
+                    if format_match:
+                        expected_streams = 2 if '+' in format_match.group(1) else 1
+
+                    percent_match = re.search(r'\[download\]\s+([0-9.]+)%', line)
+                    if percent_match:
+                        stream_percent = float(percent_match.group(1))
+                        if previous_stream_percent >= 99 and stream_percent < previous_stream_percent:
+                            completed_streams = min(expected_streams - 1, completed_streams + 1)
+                        overall_fraction = (completed_streams + stream_percent / 100) / expected_streams
+                        progress = min(95, max(0, int(overall_fraction * 95)))
+                        previous_stream_percent = stream_percent
+                        _set_download_job(
+                            job_id,
+                            status='downloading',
+                            progress=progress,
+                            message=(
+                                f'正在下载 {quality}p 音视频'
+                                if job['platform'] == 'youtube'
+                                else '正在下载视频'
+                            ),
+                        )
+                    elif '[Merger]' in line or '[VideoRemuxer]' in line or '[Fixup' in line:
+                        _set_download_job(job_id, status='merging', progress=99, message='正在合并音视频')
+
+                    if time.time() - started_at > DOWNLOAD_JOB_TIMEOUT_SECONDS:
+                        process.terminate()
+                        try:
+                            process.wait(timeout=5)
+                        except subprocess.TimeoutExpired:
+                            process.kill()
+                        raise TimeoutError('Download time exceeded 15 minutes')
+
+                return_code = process.wait(timeout=10)
+            except Exception as exc:
+                return_code = -1
+                output_tail.append(sanitize_sensitive_output(str(exc)))
+
+            if return_code == 0:
+                candidates = [
+                    path for path in glob.glob(f'{output_base}.*')
+                    if not path.endswith(('.part', '.ytdl')) and os.path.isfile(path)
+                ]
+                if candidates:
+                    output_file = max(candidates, key=os.path.getsize)
+                    _set_download_job(
+                        job_id,
+                        status='ready',
+                        progress=100,
+                        message='处理完成，可以下载',
+                        file_path=output_file,
+                        file_size=os.path.getsize(output_file),
+                    )
+                    return
+                output_tail.append('Downloaded file does not exist')
+
+            last_error = '\n'.join(output_tail[-8:]) or 'Download failed'
+            retryable = any(token in last_error.lower() for token in (
+                'bot', 'sign in', 'challenge', 'proxy', 'timeout', 'timed out',
+                'connection', 'network', 'http error 403', 'http error 429',
+                'requested format is not available', 'only images are available',
+                'no video formats found',
+            ))
+            if attempt < len(routes) and retryable:
+                continue
+            break
+
+        _set_download_job(
+            job_id,
+            status='error',
+            message='下载失败',
+            error=sanitize_sensitive_output(last_error)[-800:],
+        )
+
+
+def _run_youtube_download_job(job_id: str) -> None:
+    """兼容旧调用名称；实际所有平台都由统一任务执行。"""
+    _run_download_job(job_id)
+
+
+download_job_cleanup_thread = threading.Thread(
+    target=_download_job_cleanup_loop,
+    name='videox-download-cleanup',
+    daemon=True,
+)
+download_job_cleanup_thread.start()
 
 
 @app.route('/icon/<path:filename>')
@@ -423,6 +872,158 @@ def proxy_download():
         }), 500
 
 
+@app.route('/download-jobs', methods=['POST'])
+def create_download_job():
+    """为所有支持的平台创建统一后台下载任务。"""
+    _cleanup_expired_download_jobs()
+    data = request.get_json(silent=True) or {}
+    source_url = (data.get('url') or '').strip()
+    platform = _normalize_download_platform(source_url, str(data.get('platform') or ''))
+    quality = str(data.get('quality') or ('720' if platform == 'youtube' else 'best'))
+    filename = _safe_job_filename(data.get('filename') or 'video.mp4')
+    is_dash = bool(data.get('is_dash'))
+    try:
+        expected_size = max(0, int(data.get('expected_size') or 0))
+    except (TypeError, ValueError):
+        expected_size = 0
+    expected_size = min(expected_size, 100 * 1024 * 1024 * 1024)
+    media_url = (data.get('media_url') or '').strip()
+
+    source_valid, source_error = validate_url(source_url)
+    if not source_valid or platform not in SUPPORTED_DOWNLOAD_PLATFORMS:
+        return jsonify({
+            'success': False,
+            'message': '不支持的下载链接',
+            'error': source_error or 'Unsupported platform',
+        }), 400
+    if platform == 'youtube' and quality not in YOUTUBE_QUALITY_SELECTORS:
+        return jsonify({
+            'success': False,
+            'message': '不支持的清晰度',
+            'error': 'quality must be one of: 360, 720, 1080',
+        }), 400
+    if platform != 'youtube':
+        quality = 'best'
+
+    # DASH/HLS 必须交给 yt-dlp 合并；普通媒体直链则可按字节精确计进度。
+    safe_media_url = None if is_dash else _safe_direct_media_url(media_url, platform)
+
+    job_id = uuid.uuid4().hex
+    job_dir = os.path.join(DOWNLOAD_JOB_ROOT, job_id)
+    now = time.time()
+    with download_jobs_lock:
+        active_jobs = sum(
+            1 for job in download_jobs.values()
+            if job.get('status') in ('queued', 'downloading', 'merging')
+        )
+        if active_jobs >= DOWNLOAD_JOB_MAX_PENDING:
+            return jsonify({
+                'success': False,
+                'message': '当前下载任务较多，请稍后重试',
+            }), 429
+        download_jobs[job_id] = {
+            'status': 'queued',
+            'progress': 0,
+            'progress_known': True,
+            'message': '任务已进入队列',
+            'error': '',
+            'url': source_url,
+            'media_url': safe_media_url,
+            'platform': platform,
+            'is_dash': is_dash,
+            'expected_size': expected_size,
+            'quality': quality,
+            'filename': filename,
+            'job_dir': job_dir,
+            'created_at': now,
+            'updated_at': now,
+        }
+
+    worker = threading.Thread(
+        target=_run_download_job,
+        args=(job_id,),
+        name=f'videox-download-{job_id[:8]}',
+        daemon=True,
+    )
+    worker.start()
+
+    response = jsonify({
+        'success': True,
+        'job_id': job_id,
+        'status': 'queued',
+        'status_url': f'/download-jobs/{job_id}',
+    })
+    response.status_code = 202
+    response.headers['Location'] = f'/download-jobs/{job_id}'
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
+@app.route('/download-jobs/<job_id>', methods=['GET'])
+def get_download_job(job_id):
+    """查询后台下载进度。"""
+    _cleanup_expired_download_jobs()
+    snapshot = _download_job_snapshot(job_id)
+    if snapshot is None:
+        return jsonify({'success': False, 'message': '下载任务不存在或已过期'}), 404
+
+    snapshot['success'] = snapshot['status'] != 'error'
+    if snapshot['status'] == 'ready':
+        snapshot['download_url'] = f'/download-jobs/{job_id}/file'
+        with download_jobs_lock:
+            job = download_jobs.get(job_id)
+            if job:
+                snapshot['file_size'] = job.get('file_size', 0)
+    response = jsonify(snapshot)
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
+@app.route('/download-jobs/<job_id>/file', methods=['GET'])
+def download_job_file(job_id):
+    """流式发送已完成文件；响应结束后清理临时文件。"""
+    with download_jobs_lock:
+        job = download_jobs.get(job_id)
+        if job is None:
+            return jsonify({'success': False, 'message': '下载任务不存在或已过期'}), 404
+        if job.get('status') != 'ready':
+            return jsonify({'success': False, 'message': '文件尚未处理完成'}), 409
+        file_path = job.get('file_path')
+        filename = job.get('filename') or 'video.mp4'
+        job['status'] = 'serving'
+        job['updated_at'] = time.time()
+
+    if not file_path or not os.path.isfile(file_path):
+        _set_download_job(job_id, status='error', message='下载文件已失效', error='File not found')
+        return jsonify({'success': False, 'message': '下载文件已失效，请重新创建任务'}), 410
+
+    file_size = os.path.getsize(file_path)
+    encoded_filename = quote(filename)
+
+    def generate_file():
+        try:
+            with open(file_path, 'rb') as handle:
+                while True:
+                    chunk = handle.read(1024 * 512)
+                    if not chunk:
+                        break
+                    yield chunk
+        finally:
+            with download_jobs_lock:
+                completed_job = download_jobs.pop(job_id, None)
+            _remove_download_job_files(completed_job)
+
+    return Response(
+        stream_with_context(generate_file()),
+        mimetype='video/mp4',
+        headers={
+            'Content-Disposition': f"attachment; filename*=UTF-8''{encoded_filename}",
+            'Content-Length': str(file_size),
+            'Cache-Control': 'no-store',
+        },
+    )
+
+
 def proxy_direct_download(video_url: str, filename: str):
     """直接代理下载（用于非DASH格式）"""
     try:
@@ -516,7 +1117,8 @@ def download_with_ytdlp(video_url: str, filename: str):
         is_youtube = 'youtube.com' in url_lower or 'youtu.be' in url_lower
         is_bilibili = 'bilibili.com' in url_lower or 'b23.tv' in url_lower
         is_twitter = 'twitter.com' in url_lower or 'x.com' in url_lower
-        max_retries = 3 if is_youtube else 1
+        youtube_attempts = downloader.proxy_manager.get_proxies()[:3] + [None] if is_youtube else [None]
+        max_retries = len(youtube_attempts)
         result = None
 
         for attempt in range(max_retries):
@@ -535,14 +1137,9 @@ def download_with_ytdlp(video_url: str, filename: str):
                 ])
 
             if is_youtube:
-                cmd.extend([
-                    '--extractor-args', 'youtube:player_client=android,web',
-                ])
-                proxy_env = os.environ.get('YOUTUBE_PROXY', '')
-                proxy = proxy_env.split(',')[0].strip() if proxy_env else None
-                if proxy:
-                    cmd.extend(['--proxy', proxy])
-                    app.logger.info(f"[尝试 {attempt + 1}/{max_retries}] 使用代理: {proxy[:30]}...")
+                proxy = youtube_attempts[attempt]
+                cmd.extend(downloader.youtube_args(proxy))
+                app.logger.info(f"[尝试 {attempt + 1}/{max_retries}] 使用YouTube下载线路")
 
             if is_twitter:
                 cmd.extend(["--extractor-args", "twitter:multiple_video=1"])
@@ -556,27 +1153,32 @@ def download_with_ytdlp(video_url: str, filename: str):
                 cmd,
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                 universal_newlines=True,
-                timeout=dl_timeout
+                timeout=dl_timeout,
+                env=ytdlp_subprocess_env(),
             )
 
             # 如果成功,跳出循环
             if result.returncode == 0:
                 break
 
-            # 检查是否是反机器人错误
+            # 机器人校验和 EJS 挑战偶尔会瞬时失败，允许自动切换线路。
             error_msg = result.stderr if result.stderr else result.stdout
-            is_bot_check = 'bot' in error_msg.lower() or 'sign in' in error_msg.lower()
+            error_lower = error_msg.lower()
+            is_bot_check = any(token in error_lower for token in (
+                'bot', 'sign in', 'nchallengeinput', 'challenge solver',
+                'could not solve',
+            ))
 
             app.logger.warning(f"[尝试 {attempt + 1}/{max_retries}] 下载失败 - 是否bot错误: {is_bot_check}")
 
             # 如果是最后一次尝试或不是反机器人错误,抛出异常
             if attempt == max_retries - 1:
                 app.logger.error(f"[尝试 {attempt + 1}/{max_retries}] 已达最大重试次数,下载失败")
-                raise Exception(f"yt-dlp download failed: {result.stderr[:500]}")
+                raise Exception(f"yt-dlp download failed: {sanitize_sensitive_output(result.stderr)[:500]}")
 
             if not is_bot_check:
-                app.logger.error(f"[尝试 {attempt + 1}/{max_retries}] 非bot错误,直接失败: {error_msg[:100]}")
-                raise Exception(f"yt-dlp download failed: {result.stderr[:500]}")
+                app.logger.error(f"[尝试 {attempt + 1}/{max_retries}] 非bot错误,直接失败: {sanitize_sensitive_output(error_msg)[:100]}")
+                raise Exception(f"yt-dlp download failed: {sanitize_sensitive_output(result.stderr)[:500]}")
 
             # 否则继续重试(会自动切换到下一个代理)
             app.logger.warning(f"[尝试 {attempt + 1}/{max_retries}] Bot错误,切换代理重试...")

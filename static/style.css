@@ -363,6 +363,85 @@ body {
     color: #fff;
 }
 
+.quality-control {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.65rem 0.75rem;
+    background: rgba(55, 65, 81, 0.7);
+    border: 1px solid #4b5563;
+    border-radius: 0.5rem;
+}
+
+.quality-control label {
+    color: #cbd5e1;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.quality-select {
+    min-width: 10.5rem;
+    padding: 0.45rem 2rem 0.45rem 0.65rem;
+    color: #f8fafc;
+    background: #1f2937;
+    border: 1px solid #64748b;
+    border-radius: 0.4rem;
+    font: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.quality-select:focus {
+    outline: none;
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2);
+}
+
+.download-progress {
+    padding: 0.65rem 0;
+}
+
+.download-progress-info {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    color: #cbd5e1;
+    font-size: 0.78rem;
+    margin-bottom: 0.45rem;
+}
+
+.download-progress-track {
+    width: 100%;
+    height: 0.4rem;
+    overflow: hidden;
+    background: #374151;
+    border-radius: 999px;
+}
+
+.download-progress-bar {
+    width: 0;
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6, #60a5fa);
+    border-radius: inherit;
+    transition: width 0.35s ease;
+}
+
+.download-progress-bar.indeterminate {
+    animation: download-progress-indeterminate 1.15s ease-in-out infinite;
+    transition: none;
+}
+
+@keyframes download-progress-indeterminate {
+    from {
+        transform: translateX(-110%);
+    }
+
+    to {
+        transform: translateX(300%);
+    }
+}
+
 .download-btn {
     width: 100%;
     display: inline-flex;
@@ -530,7 +609,7 @@ body {
 }
 
 .app-footer .disclaimer {
-    white-space: nowrap;
+    white-space: normal;
     max-width: 100%;
 }
 

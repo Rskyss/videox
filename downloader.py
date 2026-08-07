@@ -69,6 +69,23 @@ DOUYIN_UA = (
     "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Mobile/15E148 Safari/604.1"
 )
 
+PROXY_URL_PATTERN = re.compile(
+    r'(?i)\b(?:https?|socks5h?|socks5)://[^\s\]\)]+',
+)
+
+
+def sanitize_sensitive_output(message: str) -> str:
+    """隐藏 yt-dlp 错误中可能包含的带认证代理地址。"""
+    return PROXY_URL_PATTERN.sub('<proxy-redacted>', str(message or ''))
+
+
+def ytdlp_subprocess_env() -> Dict[str, str]:
+    """避免 PM2 的 Node IPC 变量让 yt-dlp 的 Node 求解器异常退出。"""
+    env = os.environ.copy()
+    for key in ('NODE_CHANNEL_FD', 'NODE_CHANNEL_SERIALIZATION_MODE', 'NODE_UNIQUE_ID'):
+        env.pop(key, None)
+    return env
+
 
 class ProxyManager:
     """代理管理器 - 从环境变量读取代理配置"""
@@ -78,11 +95,15 @@ class ProxyManager:
         return os.environ.get('IPROYAL_PROXY', '')
 
     def get_proxies(self) -> List[str]:
-        """获取代理列表，从环境变量 YOUTUBE_PROXY 读取（逗号分隔）"""
-        proxy_env = os.environ.get('YOUTUBE_PROXY', '')
-        if proxy_env:
-            return [p.strip() for p in proxy_env.split(',') if p.strip()]
-        return []
+        """按已验证线路优先级返回去重后的 YouTube 代理列表。"""
+        proxies = []
+        for env_name in ('YOUTUBE_PROXY', 'IPROYAL_PROXY'):
+            proxy_env = os.environ.get(env_name, '')
+            for proxy in proxy_env.split(','):
+                proxy = proxy.strip()
+                if proxy and proxy not in proxies:
+                    proxies.append(proxy)
+        return proxies
 
     def get_next_proxy(self) -> Optional[str]:
         """获取第一个可用代理"""
@@ -101,6 +122,22 @@ class VideoDownloader:
         self.douyin_parser = DouyinParser()
         self.local_cookie_file = LOCAL_COOKIES_FILE
         self.proxy_manager = ProxyManager()
+
+    def youtube_args(
+        self,
+        proxy: Optional[str] = None,
+        client: str = 'web_safari',
+    ) -> List[str]:
+        """返回服务器上已验证可用的现代 YouTube 提取参数。"""
+        args = [
+            '--js-runtimes', 'node',
+            '--remote-components', 'ejs:github',
+            '--extractor-args', f'youtube:player_client={client}',
+            '--no-update',
+        ]
+        if proxy:
+            args.extend(['--proxy', proxy])
+        return args
 
     def download(self, url: str, directory: str, cookies_from_browser: str = None) -> Dict:
         url_extracted, extracted_url, extract_error = extract_url_from_text(url)
@@ -153,7 +190,8 @@ class VideoDownloader:
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=300
+                timeout=300,
+                env=ytdlp_subprocess_env(),
             )
             if result.returncode == 0:
                 return {
@@ -195,128 +233,44 @@ class VideoDownloader:
 
     def _download_youtube_with_retry(self, url: str, directory: str, cookies_from_browser: str = None, is_douyin: bool = False, douyin_error_hint: str = None) -> Dict:
         """
-        YouTube下载带重试机制
-        尝试顺序：
-        1. 优先使用住宅代理 (IPRoyal)
-        2. 使用数据中心代理池
-        3. 降级到直连
+        YouTube下载带重试机制：已验证代理优先，最后降级到直连。
         """
         resolved_browser = self._resolve_cookie_browser(url, cookies_from_browser)
         output_template = os.path.join(directory, "%(title)s.%(ext)s")
         local_cookie = self._resolve_cookie_file(url)
 
-        # 1. 优先使用住宅代理
-        residential_proxy = self.proxy_manager.get_residential_proxy()
-        if residential_proxy:
+        attempts = self.proxy_manager.get_proxies()[:3] + [None]
+        last_error = ''
+        for proxy in attempts:
             cmd = [YTDLP_CMD, url, "-o", output_template]
-            cmd.extend(['--extractor-args', 'youtube:player_client=android'])
-            cmd.extend(['--proxy', residential_proxy])
-
-            if resolved_browser:
+            cmd.extend(self.youtube_args(proxy))
+            if resolved_browser and not local_cookie:
                 cmd.extend(["--cookies-from-browser", resolved_browser])
             if local_cookie:
                 cmd.extend(["--cookies", local_cookie])
-
-            try:
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-                if result.returncode == 0:
-                    return {'success': True, 'message': '视频下载成功'}
-                print(f"住宅代理下载失败: {result.stderr[:100] if result.stderr else 'unknown'}")
-            except Exception as e:
-                print(f"住宅代理异常: {e}")
-
-        # 2. 尝试数据中心代理池
-        proxies = self.proxy_manager.get_proxies()
-        max_proxy_attempts = min(3, len(proxies)) if proxies else 0
-
-        for attempt in range(max_proxy_attempts):
-            proxy = self.proxy_manager.get_next_proxy()
-            if not proxy:
-                break
-
-            cmd = [YTDLP_CMD, url, "-o", output_template]
-            cmd.extend(['--extractor-args', 'youtube:player_client=android'])
-            cmd.extend(['--proxy', proxy])
-
-            if resolved_browser:
-                cmd.extend(["--cookies-from-browser", resolved_browser])
-            if local_cookie:
-                cmd.extend(["--cookies", local_cookie])
-
             try:
                 result = subprocess.run(
-                    cmd,
-                    capture_output=True,
-                    text=True,
-                    timeout=300
+                    cmd, capture_output=True, text=True, timeout=300,
+                    env=ytdlp_subprocess_env(),
                 )
                 if result.returncode == 0:
-                    return {
-                        'success': True,
-                        'message': '视频下载成功'
-                    }
-                # 代理失败，尝试下一个
-                print(f"代理 {proxy} 下载失败，尝试下一个...")
+                    return {'success': True, 'message': '视频下载成功'}
+                last_error = result.stderr if result.stderr else result.stdout
             except subprocess.TimeoutExpired:
-                print(f"代理 {proxy} 超时，尝试下一个...")
-                continue
+                last_error = '下载时间超过5分钟'
             except Exception as e:
-                print(f"代理 {proxy} 异常: {e}，尝试下一个...")
-                continue
+                last_error = sanitize_sensitive_output(str(e))
 
-        # 所有代理都失败，降级到直连
-        print("代理下载失败，降级到直连模式...")
-        cmd = [YTDLP_CMD, url, "-o", output_template]
-        cmd.extend(['--extractor-args', 'youtube:player_client=android'])
-        # 不添加 --proxy 参数，使用直连
-
-        if resolved_browser:
-            cmd.extend(["--cookies-from-browser", resolved_browser])
-        if local_cookie:
-            cmd.extend(["--cookies", local_cookie])
-
-        try:
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=300
-            )
-            if result.returncode == 0:
-                return {
-                    'success': True,
-                    'message': '视频下载成功'
-                }
-            else:
-                error_msg = result.stderr if result.stderr else result.stdout
-                error_parsed = self._parse_error(error_msg)
-                return {
-                    'success': False,
-                    'message': '下载失败',
-                    'error': error_parsed
-                }
-        except subprocess.TimeoutExpired:
-            return {
-                'success': False,
-                'message': '下载超时',
-                'error': '下载时间超过5分钟，请检查网络连接或视频大小'
-            }
-        except FileNotFoundError:
-            return {
-                'success': False,
-                'message': 'yt-dlp 未安装',
-                'error': '请先安装 yt-dlp 工具'
-            }
-        except Exception as e:
-            return {
-                'success': False,
-                'message': '下载发生异常',
-                'error': str(e)
-            }
+        return {
+            'success': False,
+            'message': '下载失败',
+            'error': self._parse_error(last_error),
+        }
 
     def _parse_error(self, error_output: str) -> str:
         if not error_output:
             return "Unknown error"
+        error_output = sanitize_sensitive_output(error_output)
         # 优先提取 ERROR 行，避免把 yt-dlp 版本 WARNING 当成失败原因返回给用户
         meaningful_lines = []
         for line in error_output.splitlines():
@@ -337,6 +291,7 @@ class VideoDownloader:
             'pycryptodome': '缺少 pycryptodome 依赖，运行 start.sh/start.bat 重新安装即可',
             'keyring': '缺少 keyring 依赖，运行 start.sh/start.bat 重新安装即可',
             'browser-cookie3': '缺少 browser-cookie3 依赖，运行 start.sh/start.bat 重新安装即可',
+            'impersonate target': '服务器缺少浏览器模拟组件，请安装 requirements.txt 后重试',
             'could not find the default profile': '未找到浏览器登录信息，请确认已在该浏览器登录目标平台',
             'no such file or directory: cookies-from-browser': '浏览器 cookies 读取失败，请重新选择浏览器或确认已登录',
         }
@@ -442,37 +397,28 @@ class VideoDownloader:
         output_template = os.path.join(directory, "%(title)s.%(ext)s")
         local_cookie = self._resolve_cookie_file(url)
 
-        # YouTube下载策略：优先直连，失败后尝试代理
         attempts = []
         if is_youtube:
-            # 第一次尝试：直连
-            attempts.append(('direct', False))
-            # 如果有代理，准备第二次尝试
-            if self.proxy_manager.get_proxies():
-                attempts.append(('proxy', True))
+            attempts.extend(self.proxy_manager.get_proxies()[:3])
+            attempts.append(None)
         else:
-            # 非YouTube：使用默认策略
-            attempts.append(('default', False))
+            attempts.append(None)
 
-        for attempt_name, use_proxy in attempts:
-            if attempt_name == 'proxy':
+        for attempt_index, proxy in enumerate(attempts):
+            if is_youtube and attempt_index > 0:
                 yield {
                     'status': 'progress',
                     'percent': 0,
-                    'message': '直连失败，尝试使用代理下载...'
+                    'message': '当前线路失败，正在切换下载线路...'
                 }
 
             cmd = [YTDLP_CMD, url, "-o", output_template, "--newline"]
             # 根据策略添加YouTube参数
             if is_youtube:
-                cmd.extend(['--extractor-args', 'youtube:player_client=android'])
-                if use_proxy:
-                    proxy = self.proxy_manager.get_next_proxy()
-                    if proxy:
-                        cmd.extend(['--proxy', proxy])
+                cmd.extend(self.youtube_args(proxy))
             else:
                 cmd.extend(self._platform_specific_args(url))
-            if resolved_browser:
+            if resolved_browser and not local_cookie:
                 cmd.extend(["--cookies-from-browser", resolved_browser])
             if local_cookie:
                 cmd.extend(["--cookies", local_cookie])
@@ -485,7 +431,8 @@ class VideoDownloader:
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     text=True,
-                    bufsize=1
+                    bufsize=1,
+                    env=ytdlp_subprocess_env(),
                 )
                 all_output = []
                 for line in process.stdout:
@@ -503,7 +450,7 @@ class VideoDownloader:
                     return  # 成功后立即返回
                 else:
                     # 如果还有其他尝试方式，继续尝试
-                    if attempt_name != attempts[-1][0]:
+                    if attempt_index < len(attempts) - 1:
                         continue
                     # 最后一次尝试也失败了
                     error_output = ''.join(all_output)
@@ -519,7 +466,7 @@ class VideoDownloader:
                     return
             except Exception as e:
                 # 如果还有其他尝试方式，继续尝试
-                if attempt_name != attempts[-1][0]:
+                if attempt_index < len(attempts) - 1:
                     continue
                 # 最后一次尝试也失败了
                 yield {
@@ -600,11 +547,7 @@ class VideoDownloader:
         return 'bilibili.com' in url_lower or 'b23.tv' in url_lower
 
     def _append_proxy_args(self, args: List[str]) -> None:
-        """附加住宅/备用代理参数（若已配置）"""
-        residential_proxy = self.proxy_manager.get_residential_proxy()
-        if residential_proxy:
-            args.extend(['--proxy', residential_proxy])
-            return
+        """附加首个已验证代理参数（若已配置）。"""
         proxy = self.proxy_manager.get_next_proxy()
         if proxy:
             args.extend(['--proxy', proxy])
@@ -618,13 +561,7 @@ class VideoDownloader:
         if self._is_douyin_url(url):
             args.extend(self.douyin_headers)
         if self._is_youtube_url(url):
-            args.extend([
-                '--extractor-args', 'youtube:player_client=android,web',
-                '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                '--no-update',
-            ])
-            # 优先使用住宅代理
-            self._append_proxy_args(args)
+            args.extend(self.youtube_args(self.proxy_manager.get_next_proxy()))
         # TikTok 对机房 IP 常直接 403，解析时走住宅代理并启用浏览器伪装
         if 'tiktok.com' in url.lower():
             args.extend(['--no-update', '--impersonate', 'chrome'])
@@ -641,6 +578,14 @@ class VideoDownloader:
 
     def _cookie_domain_hint(self, url: str) -> Optional[str]:
         netloc = urlparse(url).netloc.lower()
+        short_domain_aliases = {
+            'youtu.be': 'youtube.com',
+            'b23.tv': 'bilibili.com',
+            'xhslink.com': 'xiaohongshu.com',
+        }
+        for short_domain, cookie_domain in short_domain_aliases.items():
+            if short_domain in netloc:
+                return cookie_domain
         for domain in AUTO_COOKIE_DOMAINS:
             if domain in netloc:
                 return domain
@@ -775,50 +720,160 @@ class VideoDownloader:
                 'error': str(e)
             }
 
+    def _parse_youtube_lightweight(self, url: str, page_url: str, cookies_from_browser: str = None) -> Dict:
+        """轻量解析 YouTube 元数据，下载阶段始终交回服务器 yt-dlp。"""
+        resolved_browser = self._resolve_cookie_browser(url, cookies_from_browser)
+        local_cookie = self._resolve_cookie_file(url)
+        routes = []
+        for proxy in self.proxy_manager.get_proxies()[:2]:
+            routes.extend([(proxy, 'web_safari'), (proxy, 'mweb')])
+        routes.extend([(None, 'web_safari'), (None, 'tv')])
+        last_error = ''
+
+        for proxy, client in routes:
+            cmd = [
+                YTDLP_CMD,
+                '--no-playlist',
+                '--no-update',
+                '--skip-download',
+                # Metadata can still be returned when a client exposes no
+                # directly downloadable formats (common with web_safari).
+                '--ignore-no-formats-error',
+                '--print', '%(.{id,title,duration,thumbnail,ext})#j',
+            ]
+            cmd.extend(self.youtube_args(proxy, client))
+            if resolved_browser and not local_cookie:
+                cmd.extend(['--cookies-from-browser', resolved_browser])
+            if local_cookie:
+                cmd.extend(['--cookies', local_cookie])
+            cmd.append(url)
+
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=30,
+                env=ytdlp_subprocess_env(),
+            )
+            metadata = None
+            output_text = result.stdout.strip()
+            try:
+                candidate = json.loads(output_text)
+                if candidate.get('id') and candidate.get('title'):
+                    metadata = candidate
+            except json.JSONDecodeError:
+                pass
+
+            for output_line in reversed(output_text.splitlines()):
+                if metadata is not None:
+                    break
+                try:
+                    candidate = json.loads(output_line)
+                except json.JSONDecodeError:
+                    continue
+                if candidate.get('id') and candidate.get('title'):
+                    metadata = candidate
+                    break
+
+            # yt-dlp 可能已输出有效元数据，但因后续非关键格式警告返回退出码 1。
+            if metadata is None:
+                last_error = result.stderr or result.stdout or 'YouTube metadata response is empty'
+                continue
+
+            title = self._sanitize_filename(metadata.get('title') or '未命名视频')
+            duration = int(metadata.get('duration') or 0)
+            return {
+                'success': True,
+                'message': '解析成功',
+                'video_info': {
+                    'title': title,
+                    'url': page_url,
+                    'page_url': page_url,
+                    'size': 0,
+                    'size_readable': 'Unknown',
+                    'duration': duration,
+                    'duration_readable': self._format_duration(duration),
+                    'thumbnail': metadata.get('thumbnail') or '',
+                    'platform': 'YouTube',
+                    'ext': metadata.get('ext') or 'mp4',
+                    'is_dash': True,
+                }
+            }
+
+        return {
+            'success': False,
+            'message': '视频解析失败',
+            'error': self._parse_error(last_error),
+        }
+
     def _parse_video_with_ytdlp(self, url: str, page_url: str, cookies_from_browser: str = None) -> Dict:
         try:
             is_youtube = self._is_youtube_url(url)
-            max_retries = 3 if is_youtube else 1
+            if is_youtube:
+                return self._parse_youtube_lightweight(url, page_url, cookies_from_browser)
+            resolved_browser = self._resolve_cookie_browser(url, cookies_from_browser)
+            local_cookie = self._resolve_cookie_file(url)
 
-            for attempt in range(max_retries):
-                cmd = [YTDLP_CMD, "-j", "--no-playlist", "--no-update", url]
-                cmd.extend(self._platform_specific_args(url))
-                resolved_browser = self._resolve_cookie_browser(url, cookies_from_browser)
-                if resolved_browser:
+            if is_youtube:
+                routes = []
+                for proxy in self.proxy_manager.get_proxies()[:2]:
+                    routes.extend([
+                        (proxy, 'web_safari'),
+                        (proxy, 'mweb'),
+                    ])
+                routes.extend([
+                    (None, 'web_safari'),
+                    (None, 'tv'),
+                ])
+            else:
+                routes = [(None, None)]
+
+            result = None
+            error_msg = ''
+            for route_index, (proxy, client) in enumerate(routes):
+                cmd = [YTDLP_CMD, "-j", "--no-playlist", "--no-update"]
+                if is_youtube:
+                    cmd.extend(self.youtube_args(proxy, client))
+                else:
+                    cmd.extend(self._platform_specific_args(url))
+                if resolved_browser and not local_cookie:
                     cmd.extend(["--cookies-from-browser", resolved_browser])
-                local_cookie = self._resolve_cookie_file(url)
                 if local_cookie:
                     cmd.extend(["--cookies", local_cookie])
                 if is_twitter_url(url):
                     cmd.extend(["--extractor-args", "twitter:multiple_video=1"])
                     # Twitter 优先选 http 直链 mp4，避免 HLS 多分片合并
                     cmd.extend(["-f", "best[protocol^=http][protocol!*=m3u8]/best"])
+                cmd.append(url)
 
                 result = subprocess.run(
                     cmd,
                     capture_output=True,
                     text=True,
-                    timeout=30
+                    timeout=30,
+                    env=ytdlp_subprocess_env(),
                 )
 
                 if result.returncode == 0:
                     break
 
-                # 检查是否是 YouTube 反机器人错误
+                # 机器人校验和 EJS 挑战偶尔会瞬时失败，允许自动重试。
                 error_msg = result.stderr if result.stderr else result.stdout
-                is_bot_check = 'bot' in error_msg.lower() or 'sign in' in error_msg.lower()
+                error_lower = error_msg.lower()
+                is_retryable = any(token in error_lower for token in (
+                    'bot', 'sign in', 'nchallengeinput', 'challenge solver',
+                    'could not solve',
+                ))
 
-                # 如果是最后一次尝试或不是反机器人错误,直接返回错误
-                if attempt == max_retries - 1 or not is_bot_check:
+                if route_index == len(routes) - 1 or not is_retryable:
                     return {
                         'success': False,
                         'message': '视频解析失败',
                         'error': self._parse_error(error_msg)
                     }
-                # 否则继续重试(会自动切换到下一个代理)
+                # 否则切换客户端或代理线路继续尝试。
 
-            if result.returncode != 0:
-                error_msg = result.stderr if result.stderr else result.stdout
+            if result is None or result.returncode != 0:
                 return {
                     'success': False,
                     'message': '视频解析失败',

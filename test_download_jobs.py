@@ -80,6 +80,20 @@ class DownloadJobTestCase(unittest.TestCase):
             fallback_command[fallback_command.index('--extractor-args') + 1],
         )
 
+    def test_bilibili_quality_selectors_cap_resolution(self):
+        for quality in ('360', '720', '1080'):
+            command = app_module._platform_download_command(
+                {
+                    'url': 'https://www.bilibili.com/video/BV1c7GA6kEqN/',
+                    'platform': 'bilibili',
+                    'quality': quality,
+                },
+                '/tmp/test-bili',
+            )
+            selector = command[command.index('-f') + 1]
+            self.assertIn(f'height<={quality}', selector)
+            self.assertEqual(selector, app_module.BILIBILI_QUALITY_SELECTORS[quality])
+
     @mock.patch.object(app_module.downloader.proxy_manager, 'get_proxies', return_value=[])
     @mock.patch('downloader.subprocess.run')
     def test_metadata_parse_survives_missing_download_formats(self, run, _get_proxies):
@@ -142,7 +156,10 @@ class DownloadJobTestCase(unittest.TestCase):
                 with app_module.download_jobs_lock:
                     job = app_module.download_jobs[job_id]
                 self.assertEqual(job['platform'], platform)
-                self.assertEqual(job['quality'], '720' if platform == 'youtube' else 'best')
+                self.assertEqual(
+                    job['quality'],
+                    '720' if platform in ('youtube', 'bilibili') else 'best',
+                )
 
     def test_job_queue_is_bounded(self):
         now = time.time()

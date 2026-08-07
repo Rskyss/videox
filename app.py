@@ -46,6 +46,12 @@ YOUTUBE_QUALITY_SELECTORS = {
     '720': 'bv[height<=720][vcodec^=avc1]+ba[ext=m4a]/bv[height<=720]+ba/b[height<=720]',
     '1080': 'bv[height<=1080][vcodec^=avc1]+ba[ext=m4a]/bv[height<=1080]+ba/b[height<=1080]',
 }
+# B站按高度封顶；不强制 AVC，便于选到更小的 HEVC 档
+BILIBILI_QUALITY_SELECTORS = {
+    '360': 'bv*[height<=360]+ba/b[height<=360]/bv*+ba/b',
+    '720': 'bv*[height<=720]+ba/b[height<=720]/bv*+ba/b',
+    '1080': 'bv*[height<=1080]+ba/b[height<=1080]/bv*+ba/b',
+}
 SUPPORTED_DOWNLOAD_PLATFORMS = {
     'douyin', 'bilibili', 'xiaohongshu', 'youtube', 'tiktok', 'twitter',
 }
@@ -215,7 +221,11 @@ def _platform_download_command(job, output_base: str, proxy=None, client=None):
         '--retries', '3',
         '--fragment-retries', '3',
         '--socket-timeout', '30',
-        '-f', 'bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/bv*+ba/b',
+        '-f', (
+            BILIBILI_QUALITY_SELECTORS.get(quality, BILIBILI_QUALITY_SELECTORS['720'])
+            if platform == 'bilibili'
+            else 'bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/bv*+ba/b'
+        ),
         '-o', f'{output_base}.%(ext)s',
         '--merge-output-format', 'mp4',
     ]
@@ -839,7 +849,7 @@ def proxy_download():
         video_url: 视频直链URL (需要URL编码)
         filename: 文件名
         is_dash: 是否为DASH格式 (可选，默认false)
-        quality: YouTube 清晰度 360/720/1080（可选）
+        quality: 清晰度 360/720/1080（YouTube / B站可选）
     
     Returns:
         视频文件流
@@ -881,7 +891,7 @@ def create_download_job():
     data = request.get_json(silent=True) or {}
     source_url = (data.get('url') or '').strip()
     platform = _normalize_download_platform(source_url, str(data.get('platform') or ''))
-    quality = str(data.get('quality') or ('720' if platform == 'youtube' else 'best'))
+    quality = str(data.get('quality') or ('720' if platform in ('youtube', 'bilibili') else 'best'))
     filename = _safe_job_filename(data.get('filename') or 'video.mp4')
     is_dash = bool(data.get('is_dash'))
     try:
@@ -898,13 +908,13 @@ def create_download_job():
             'message': '不支持的下载链接',
             'error': source_error or 'Unsupported platform',
         }), 400
-    if platform == 'youtube' and quality not in YOUTUBE_QUALITY_SELECTORS:
+    if platform in ('youtube', 'bilibili') and quality not in YOUTUBE_QUALITY_SELECTORS:
         return jsonify({
             'success': False,
             'message': '不支持的清晰度',
             'error': 'quality must be one of: 360, 720, 1080',
         }), 400
-    if platform != 'youtube':
+    if platform not in ('youtube', 'bilibili'):
         quality = 'best'
 
     # DASH/HLS 必须交给 yt-dlp 合并；普通媒体直链则可按字节精确计进度。
@@ -1138,7 +1148,9 @@ def download_with_ytdlp(video_url: str, filename: str, quality: str = '720'):
                 cmd.extend([
                     "--referer", "https://www.bilibili.com/",
                     "--add-header", "Origin:https://www.bilibili.com",
+                    '-f', BILIBILI_QUALITY_SELECTORS[quality],
                 ])
+                app.logger.info(f"使用 B站下载清晰度 quality={quality}")
 
             if is_youtube:
                 proxy = youtube_attempts[attempt]

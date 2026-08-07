@@ -37,7 +37,7 @@ const translations = {
         'faq-q2': '下载的视频有水印吗？',
         'faq-a2': '没有。抖音、TikTok、B站、小红书解析后的视频均为无水印，并保留原始清晰度。',
         'faq-q3': '支持哪些平台？',
-        'faq-a3': '支持抖音、B站、小红书、YouTube、TikTok、Twitter/X。YouTube 支持 360p、720p 和 1080p，高清音视频会自动合并。',
+        'faq-a3': '支持抖音、B站、小红书、YouTube、TikTok、Twitter/X。YouTube 与 B站 支持选择 360p、720p、1080p。',
         'faq-q4': '为什么链接解析失败？',
         'faq-a4': '可能是链接不正确，或视频已被删除、设为私密、仍在审核中。请重新复制分享链接后再试一次。',
         'faq-q5': '会保存我下载的视频吗？',
@@ -80,7 +80,7 @@ const translations = {
         'faq-q2': 'Do downloaded videos have a watermark?',
         'faq-a2': 'No. Videos parsed from Douyin, TikTok, Bilibili and Xiaohongshu are saved without watermarks and keep their original resolution.',
         'faq-q3': 'Which platforms are supported?',
-        'faq-a3': 'Douyin, Bilibili, Xiaohongshu, YouTube, TikTok and Twitter/X are supported. YouTube supports 360p, 720p and 1080p with automatic HD audio/video merging.',
+        'faq-a3': 'Douyin, Bilibili, Xiaohongshu, YouTube, TikTok and Twitter/X are supported. YouTube and Bilibili support 360p, 720p and 1080p.',
         'faq-q4': 'Why did my link fail to parse?',
         'faq-a4': 'The link may be incorrect, or the video has been deleted, set to private or is still under review. Copy the share link again and retry.',
         'faq-q5': 'Do you store the videos I download?',
@@ -506,7 +506,9 @@ function displayVideoInfo(videoInfo) {
 
     const isYouTube = videoInfo.platform === 'YouTube' ||
         (videoInfo.page_url && /(?:youtube\.com|youtu\.be)/i.test(videoInfo.page_url));
-    elements.qualityControl.style.display = isYouTube ? 'flex' : 'none';
+    const isBilibili = videoInfo.platform === 'B站' ||
+        (videoInfo.page_url && /(?:bilibili\.com|b23\.tv)/i.test(videoInfo.page_url));
+    elements.qualityControl.style.display = (isYouTube || isBilibili) ? 'flex' : 'none';
     elements.qualitySelect.value = '720';
 
     // 显示视频结果
@@ -542,7 +544,9 @@ function handleDownload() {
     const filename = `${videoInfo.title}.${videoInfo.ext || 'mp4'}`;
     const isYouTube = videoInfo.platform === 'YouTube' ||
         (videoInfo.page_url && /(?:youtube\.com|youtu\.be)/i.test(videoInfo.page_url));
-    const quality = isYouTube ? (elements.qualitySelect.value || '720') : '';
+    const isBilibili = videoInfo.platform === 'B站' ||
+        (videoInfo.page_url && /(?:bilibili\.com|b23\.tv)/i.test(videoInfo.page_url));
+    const quality = (isYouTube || isBilibili) ? (elements.qualitySelect.value || '720') : '';
 
     // YouTube 非 DASH 直链：直接打开源站地址，由浏览器下载
     if (isYouTube && !isDash && videoInfo.url && /googlevideo\.com/i.test(videoInfo.url)) {
@@ -552,16 +556,16 @@ function handleDownload() {
         return;
     }
 
-    const sourceUrl = (isYouTube || isDash)
+    const sourceUrl = (isYouTube || isBilibili || isDash)
         ? (videoInfo.page_url || videoInfo.url)
         : videoInfo.url;
 
-    let proxyUrl = `/proxy-download?video_url=${encodeURIComponent(sourceUrl)}&filename=${encodeURIComponent(filename)}&is_dash=${isDash || isYouTube}`;
-    if (isYouTube && quality) {
+    let proxyUrl = `/proxy-download?video_url=${encodeURIComponent(sourceUrl)}&filename=${encodeURIComponent(filename)}&is_dash=${isDash || isYouTube || isBilibili}`;
+    if (quality) {
         proxyUrl += `&quality=${encodeURIComponent(quality)}`;
     }
 
-    startBrowserDownload(proxyUrl, filename, isDash || isYouTube);
+    startBrowserDownload(proxyUrl, filename, isDash || isYouTube || isBilibili);
 }
 
 function startBrowserDownload(proxyUrl, filename, needsServerPrepare) {

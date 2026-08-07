@@ -25,6 +25,11 @@ class FrontendDownloadContractTestCase(unittest.TestCase):
         self.assertNotIn('download-progress', self.html)
         self.assertNotIn('role="progressbar"', self.html)
 
+    def test_bilibili_shows_quality_picker_like_youtube(self):
+        self.assertIn('isBilibili', self.script)
+        self.assertIn('(isYouTube || isBilibili)', self.script)
+        self.assertIn("elements.qualityControl.style.display = (isYouTube || isBilibili) ? 'flex' : 'none'", self.script)
+
     def test_non_json_parse_errors_are_handled(self):
         self.assertIn("contentType.includes('application/json')", self.script)
         self.assertIn('parseApiResponse(', self.script)

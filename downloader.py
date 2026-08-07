@@ -836,6 +836,9 @@ class VideoDownloader:
                     cmd.extend(self.youtube_args(proxy, client))
                 else:
                     cmd.extend(self._platform_specific_args(url))
+                    if self._is_bilibili_url(url):
+                        # 解析阶段默认按 720p 估算体积，与页面默认清晰度一致
+                        cmd.extend(['-f', 'bv*[height<=720]+ba/b[height<=720]/bv*+ba/b'])
                 if resolved_browser and not local_cookie:
                     cmd.extend(["--cookies-from-browser", resolved_browser])
                 if local_cookie:

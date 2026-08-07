@@ -95,7 +95,7 @@ URL提取和验证 (utils.extract_url_from_text)
 - **代理支持**:
   - 自动从 Webshare API 获取代理列表 (downloader.py:59-130)
   - 环境变量备用: `YOUTUBE_PROXY` (逗号分隔的代理列表)
-  - API Token: `WEBSHARE_API_TOKEN` (默认硬编码在 ProxyManager)
+  - API Token: 通过环境变量 `WEBSHARE_API_TOKEN` / `YOUTUBE_PROXY` / `IPROYAL_PROXY` 配置（勿写入仓库）
 - **代理轮换**: ProxyManager.get_next_proxy() 循环使用代理池
 
 #### B站 (Bilibili)

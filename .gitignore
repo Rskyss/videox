@@ -21,11 +21,18 @@ dist/
 .DS_Store
 Thumbs.db
 
-# Environment variables
+# Environment variables / secrets
 .env
+cookies.txt
+*.cookies.txt
 
 # Downloaded videos (user data)
 downloads/
+
+# Runtime / deploy leftovers
+backups/
+/tmp/
+videox_download_jobs/
 
 # Backup files
 *.backup
@@ -36,3 +43,4 @@ downloads/
 
 # Log files
 *.log
+daily_stats.txt

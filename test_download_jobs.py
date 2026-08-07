@@ -72,6 +72,38 @@ class _DirectResponse:
         return iter((b'12345', b'67890'))
 
 
+class _RangeResponse:
+    def __init__(self, content_range, chunks, status_code=206):
+        self.headers = {'Content-Range': content_range}
+        self.status_code = status_code
+        self._chunks = chunks
+        self.closed = False
+
+    def raise_for_status(self):
+        return None
+
+    def iter_content(self, chunk_size=None):
+        return iter(self._chunks)
+
+    def close(self):
+        self.closed = True
+
+
+class _RangeSession:
+    def __init__(self, response):
+        self.response = response
+        self.trust_env = True
+        self.requests = []
+        self.closed = False
+
+    def get(self, url, **kwargs):
+        self.requests.append((url, kwargs))
+        return self.response
+
+    def close(self):
+        self.closed = True
+
+
 class DownloadJobTestCase(unittest.TestCase):
     def setUp(self):
         app_module.app.config['TESTING'] = True
@@ -614,6 +646,44 @@ class DownloadJobTestCase(unittest.TestCase):
             output_file = app_module.download_jobs[job_id]['file_path']
         with open(output_file, 'rb') as handle:
             self.assertEqual(handle.read(), b'1234567890')
+
+    def test_content_range_total_uses_complete_file_size(self):
+        response = _RangeResponse('bytes 524288-1048575/3158344', [])
+        self.assertEqual(app_module._content_range_total(response), 3158344)
+
+    def test_douyin_slow_stream_resumes_without_duplicate_bytes(self):
+        first_response = _RangeResponse('bytes 0-9/10', [b'12345'])
+        second_response = _RangeResponse('bytes 5-9/10', [b'67890'])
+        first_session = _RangeSession(first_response)
+        second_session = _RangeSession(second_response)
+
+        with mock.patch.object(
+            app_module.requests,
+            'Session',
+            side_effect=[first_session, second_session],
+        ), mock.patch.object(
+            app_module.time,
+            'monotonic',
+            side_effect=[0, 9, 10],
+        ):
+            with app_module.app.test_request_context('/'):
+                response = app_module.proxy_direct_download(
+                    'https://aweme.snssdk.com/aweme/v1/play/?video_id=test',
+                    'test.mp4',
+                )
+                body = b''.join(response.response)
+                response.close()
+
+        self.assertEqual(body, b'1234567890')
+        self.assertEqual(response.headers['Content-Length'], '10')
+        self.assertEqual(first_session.requests[0][1]['headers']['Range'], 'bytes=0-')
+        self.assertEqual(second_session.requests[0][1]['headers']['Range'], 'bytes=5-')
+        self.assertTrue(first_session.trust_env)
+        self.assertFalse(second_session.trust_env)
+        self.assertTrue(first_response.closed)
+        self.assertTrue(second_response.closed)
+        self.assertTrue(first_session.closed)
+        self.assertTrue(second_session.closed)
 
 
 if __name__ == '__main__':

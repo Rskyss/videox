@@ -41,6 +41,10 @@ DOWNLOAD_JOB_TTL_SECONDS = 60 * 60
 DOWNLOAD_JOB_TIMEOUT_SECONDS = 15 * 60
 DOWNLOAD_JOB_MAX_CONCURRENT = 2
 DOWNLOAD_JOB_MAX_PENDING = 12
+DIRECT_DOWNLOAD_CHUNK_SIZE = 1024 * 512
+DIRECT_DOWNLOAD_RECONNECT_ATTEMPTS = 4
+DIRECT_DOWNLOAD_LOW_SPEED_WINDOW_SECONDS = 8
+DIRECT_DOWNLOAD_LOW_SPEED_BYTES_PER_SECOND = 192 * 1024
 YOUTUBE_QUALITY_SELECTORS = {
     '360': '18/b[height<=360][ext=mp4]/bv[height<=360][vcodec^=avc1]+ba[ext=m4a]/bv[height<=360]+ba/b[height<=360]',
     '720': 'bv[height<=720][vcodec^=avc1]+ba[ext=m4a]/bv[height<=720]+ba/b[height<=720]',
@@ -1139,6 +1143,15 @@ def proxy_direct_download(video_url: str, filename: str):
             'Accept': '*/*',
             'Accept-Language': 'en-US,en;q=0.9',
         }
+
+        hostname = urlparse(video_url).hostname or ''
+        if _host_matches_domains(hostname, PLATFORM_MEDIA_DOMAINS['douyin']):
+            return _resumable_douyin_download(
+                video_url,
+                filename,
+                headers,
+                cookies_dict or None,
+            )
         
         # 发起流式请求（TikTok需要cookies）
         resp = requests.get(
@@ -1157,12 +1170,14 @@ def proxy_direct_download(video_url: str, filename: str):
         def generate():
             """流式传输视频数据"""
             try:
-                for chunk in resp.iter_content(chunk_size=1024 * 512):  # 512KB chunks
+                for chunk in resp.iter_content(chunk_size=DIRECT_DOWNLOAD_CHUNK_SIZE):
                     if chunk:
                         yield chunk
             except Exception as e:
                 # CDN连接中断时捕获异常，防止Flask进程崩溃
                 app.logger.error(f"流式传输中断: {e}")
+            finally:
+                resp.close()
         
         # 对文件名进行URL编码（解决中文文件名问题）
         encoded_filename = quote(filename)
@@ -1189,6 +1204,161 @@ def proxy_direct_download(video_url: str, filename: str):
             'message': 'Download failed',
             'error': str(e)
         }), 500
+
+
+def _content_range_total(response) -> int:
+    """从 206 响应中提取完整文件大小。"""
+    content_range = response.headers.get('Content-Range', '')
+    match = re.match(r'^bytes\s+\d+-\d+/(\d+)$', content_range, re.IGNORECASE)
+    if match:
+        return int(match.group(1))
+    try:
+        return int(response.headers.get('Content-Length') or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _open_douyin_range(
+    video_url: str,
+    headers,
+    cookies,
+    offset: int,
+    trust_env: bool,
+    validator: str = '',
+):
+    """打开抖音 Range 流；续传时拒绝返回整文件，避免拼接出重复内容。"""
+    session = requests.Session()
+    session.trust_env = trust_env
+    request_headers = dict(headers)
+    request_headers['Range'] = f'bytes={offset}-'
+    if offset > 0 and validator:
+        request_headers['If-Range'] = validator
+
+    response = None
+    try:
+        response = session.get(
+            video_url,
+            headers=request_headers,
+            cookies=cookies,
+            stream=True,
+            allow_redirects=True,
+            timeout=(15, 30),
+        )
+        response.raise_for_status()
+        if offset > 0 and response.status_code != 206:
+            raise requests.RequestException(
+                f'CDN did not honor Range resume at byte {offset}'
+            )
+        return session, response
+    except Exception:
+        if response is not None:
+            response.close()
+        session.close()
+        raise
+
+
+def _resumable_douyin_download(video_url: str, filename: str, headers, cookies):
+    """抖音流低速或中断时透明重连，并从已发送位置继续。"""
+    # 保持现有系统代理为首选；只有连接持续低速/中断时才切换直连，再交替重试。
+    route_modes = (True, False, True, False)[:DIRECT_DOWNLOAD_RECONNECT_ATTEMPTS]
+    route_index = 0
+    offset = 0
+    session, response = _open_douyin_range(
+        video_url,
+        headers,
+        cookies,
+        offset=0,
+        trust_env=route_modes[route_index],
+    )
+    total_size = _content_range_total(response)
+    supports_resume = response.status_code == 206 and total_size > 0
+    validator = response.headers.get('ETag') or response.headers.get('Last-Modified') or ''
+
+    def generate():
+        nonlocal route_index, offset, session, response
+        try:
+            while True:
+                route_started_at = time.monotonic()
+                route_bytes = 0
+                reconnect_reason = ''
+                try:
+                    for chunk in response.iter_content(
+                        chunk_size=DIRECT_DOWNLOAD_CHUNK_SIZE
+                    ):
+                        if not chunk:
+                            continue
+                        yield chunk
+                        offset += len(chunk)
+                        route_bytes += len(chunk)
+
+                        if total_size and offset >= total_size:
+                            return
+
+                        elapsed = time.monotonic() - route_started_at
+                        can_reconnect = (
+                            supports_resume
+                            and route_index + 1 < len(route_modes)
+                        )
+                        if (
+                            can_reconnect
+                            and elapsed >= DIRECT_DOWNLOAD_LOW_SPEED_WINDOW_SECONDS
+                            and route_bytes / max(elapsed, 0.001)
+                            < DIRECT_DOWNLOAD_LOW_SPEED_BYTES_PER_SECOND
+                        ):
+                            reconnect_reason = '持续低速'
+                            break
+                    else:
+                        if not total_size or offset >= total_size:
+                            return
+                        reconnect_reason = '连接提前结束'
+                except Exception as exc:
+                    reconnect_reason = sanitize_sensitive_output(str(exc))
+
+                response.close()
+                session.close()
+                if not supports_resume or route_index + 1 >= len(route_modes):
+                    raise requests.RequestException(
+                        reconnect_reason or 'Douyin stream ended before completion'
+                    )
+
+                route_index += 1
+                app.logger.warning(
+                    '抖音下载流重连: offset=%s route=%s reason=%s',
+                    offset,
+                    'system-proxy' if route_modes[route_index] else 'direct',
+                    reconnect_reason,
+                )
+                session, response = _open_douyin_range(
+                    video_url,
+                    headers,
+                    cookies,
+                    offset=offset,
+                    trust_env=route_modes[route_index],
+                    validator=validator,
+                )
+                resumed_total = _content_range_total(response)
+                if resumed_total and resumed_total != total_size:
+                    raise requests.RequestException(
+                        'CDN file size changed while resuming download'
+                    )
+        finally:
+            response.close()
+            session.close()
+
+    encoded_filename = quote(filename)
+    response_headers = {
+        'Content-Disposition': f"attachment; filename*=UTF-8''{encoded_filename}",
+        'Content-Type': 'video/mp4',
+        'Cache-Control': 'no-cache',
+    }
+    if total_size:
+        response_headers['Content-Length'] = str(total_size)
+
+    return Response(
+        stream_with_context(generate()),
+        mimetype='video/mp4',
+        headers=response_headers,
+    )
 
 
 def download_with_ytdlp(video_url: str, filename: str, quality: str = '720'):

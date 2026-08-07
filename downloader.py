@@ -836,9 +836,7 @@ class VideoDownloader:
                     cmd.extend(self.youtube_args(proxy, client))
                 else:
                     cmd.extend(self._platform_specific_args(url))
-                    if self._is_bilibili_url(url):
-                        # 解析阶段默认按 720p 估算体积，与页面默认清晰度一致
-                        cmd.extend(['-f', 'bv*[height<=720]+ba/b[height<=720]/bv*+ba/b'])
+                    # 不加 -f 限制：拿到完整格式列表，才能按 360/720/1080 分别估算体积
                 if resolved_browser and not local_cookie:
                     cmd.extend(["--cookies-from-browser", resolved_browser])
                 if local_cookie:
@@ -932,22 +930,40 @@ class VideoDownloader:
             extractor = video_data.get('extractor_key', '')
             platform = self._get_platform_display_name(extractor)
             ext = video_data.get('ext', 'mp4')
+
+            quality_sizes = None
+            quality_sizes_readable = None
+            if self._is_bilibili_url(url):
+                quality_sizes = self._estimate_bilibili_quality_sizes(video_data.get('formats', []))
+                quality_sizes_readable = {
+                    quality: self._format_filesize(size)
+                    for quality, size in quality_sizes.items()
+                }
+                # 默认清晰度（720p）估算体积同步作为页面初始展示的体积
+                if quality_sizes.get('720'):
+                    filesize = quality_sizes['720']
+
+            video_info = {
+                'title': title,
+                'url': download_url,
+                'page_url': page_url,
+                'size': filesize,
+                'size_readable': self._format_filesize(filesize),
+                'duration': int(duration) if duration else 0,
+                'duration_readable': self._format_duration(int(duration) if duration else 0),
+                'thumbnail': thumbnail,
+                'platform': platform,
+                'ext': ext,
+                'is_dash': is_dash
+            }
+            if quality_sizes is not None:
+                video_info['quality_sizes'] = quality_sizes
+                video_info['quality_sizes_readable'] = quality_sizes_readable
+
             return {
                 'success': True,
                 'message': '解析成功',
-                'video_info': {
-                    'title': title,
-                    'url': download_url,
-                    'page_url': page_url,
-                    'size': filesize,
-                    'size_readable': self._format_filesize(filesize),
-                    'duration': int(duration) if duration else 0,
-                    'duration_readable': self._format_duration(int(duration) if duration else 0),
-                    'thumbnail': thumbnail,
-                    'platform': platform,
-                    'ext': ext,
-                    'is_dash': is_dash
-                }
+                'video_info': video_info
             }
         except subprocess.TimeoutExpired:
             return {
@@ -982,6 +998,37 @@ class VideoDownloader:
             filename = filename[:200]
         filename = filename.strip()
         return filename or '未命名视频'
+
+    def _estimate_bilibili_quality_sizes(self, formats: List[Dict]) -> Dict[str, int]:
+        """按 360/720/1080 三档估算 B站体积（字节）。
+
+        与实际下载选择器 `bv*[height<=X]+ba/b[height<=X]/bv*+ba/b` 对齐：
+        每档取"不超过该分辨率的最大体积视频流"+"体积最大的音频流"；
+        某档没有对应分辨率时，回退到全部视频流里体积最大的那个（与选择器的 `/bv*+ba` 回退一致）。
+        """
+        video_only = []
+        audio_only = []
+        for fmt in formats or []:
+            fmt_size = fmt.get('filesize') or fmt.get('filesize_approx') or 0
+            if not fmt_size:
+                continue
+            vcodec = fmt.get('vcodec') or 'none'
+            acodec = fmt.get('acodec') or 'none'
+            if vcodec != 'none' and acodec == 'none':
+                video_only.append((fmt.get('height') or 0, fmt_size))
+            elif acodec != 'none' and vcodec == 'none':
+                audio_only.append(fmt_size)
+
+        best_audio = max(audio_only, default=0)
+        overall_best_video = max((size for _, size in video_only), default=0)
+
+        sizes: Dict[str, int] = {}
+        for quality in ('360', '720', '1080'):
+            height_cap = int(quality)
+            capped = [size for height, size in video_only if 0 < height <= height_cap]
+            video_size = max(capped, default=overall_best_video)
+            sizes[quality] = video_size + best_audio if video_size else 0
+        return sizes
 
     def _format_filesize(self, size: int) -> str:
         if not size or size <= 0:

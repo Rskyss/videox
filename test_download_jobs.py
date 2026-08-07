@@ -1,5 +1,6 @@
 """后台高清下载任务的本地接口与状态机测试。"""
 
+import json
 import os
 import tempfile
 import time
@@ -110,6 +111,96 @@ class DownloadJobTestCase(unittest.TestCase):
 
         self.assertTrue(result['success'])
         self.assertIn('--ignore-no-formats-error', run.call_args.args[0])
+
+    def test_bilibili_quality_size_estimator_matches_selector_choice(self):
+        """估算逻辑要和实际下载选择器 bv*[height<=X]+ba 选中的流一致（数据取自真实解析样本）。"""
+        formats = [
+            {'vcodec': 'none', 'acodec': 'mp4a.40.2', 'filesize_approx': 12213108},
+            {'vcodec': 'none', 'acodec': 'mp4a.40.2', 'filesize_approx': 32964013},
+            {'height': 360, 'vcodec': 'hvc1', 'acodec': 'none', 'filesize_approx': 50391998},
+            {'height': 360, 'vcodec': 'avc1', 'acodec': 'none', 'filesize_approx': 100633183},
+            {'height': 480, 'vcodec': 'avc1', 'acodec': 'none', 'filesize_approx': 147089339},
+            {'height': 720, 'vcodec': 'avc1', 'acodec': 'none', 'filesize_approx': 292071379},
+            {'height': 1080, 'vcodec': 'avc1', 'acodec': 'none', 'filesize_approx': 664787474},
+            {'height': 2160, 'vcodec': 'avc1', 'acodec': 'none', 'filesize_approx': 3198775691},
+        ]
+        sizes = app_module.downloader._estimate_bilibili_quality_sizes(formats)
+
+        self.assertEqual(sizes['360'], 100633183 + 32964013)
+        self.assertEqual(sizes['720'], 292071379 + 32964013)
+        self.assertEqual(sizes['1080'], 664787474 + 32964013)
+        # 三档递增，不应该出现"切清晰度但体积不变"的情况
+        self.assertLess(sizes['360'], sizes['720'])
+        self.assertLess(sizes['720'], sizes['1080'])
+
+    def test_bilibili_quality_size_estimator_falls_back_when_resolution_missing(self):
+        """某档没有对应分辨率时，回退到全部视频流里体积最大的那个（对齐选择器 /bv*+ba 回退）。"""
+        formats = [
+            {'vcodec': 'none', 'acodec': 'mp4a.40.2', 'filesize_approx': 5_000_000},
+            {'height': 1080, 'vcodec': 'avc1', 'acodec': 'none', 'filesize_approx': 500_000_000},
+        ]
+        sizes = app_module.downloader._estimate_bilibili_quality_sizes(formats)
+
+        for quality in ('360', '720', '1080'):
+            self.assertEqual(sizes[quality], 500_000_000 + 5_000_000)
+
+    @mock.patch.object(app_module.downloader.proxy_manager, 'get_proxies', return_value=[])
+    @mock.patch('downloader.subprocess.run')
+    def test_bilibili_parse_returns_per_quality_sizes(self, run, _get_proxies):
+        formats = [
+            {'vcodec': 'none', 'acodec': 'mp4a.40.2', 'filesize_approx': 12213108},
+            {'vcodec': 'none', 'acodec': 'mp4a.40.2', 'filesize_approx': 32964013},
+            {'height': 360, 'vcodec': 'avc1', 'acodec': 'none', 'filesize_approx': 100633183},
+            {'height': 720, 'vcodec': 'avc1', 'acodec': 'none', 'filesize_approx': 292071379},
+            {'height': 1080, 'vcodec': 'avc1', 'acodec': 'none', 'filesize_approx': 664787474},
+        ]
+        run.return_value = mock.Mock(
+            returncode=0,
+            stdout=json.dumps({
+                'id': 'BV1c7GA6kEqN',
+                'title': '我们拍到了水下风暴',
+                'duration': 1487,
+                'extractor_key': 'BiliBili',
+                'ext': 'mp4',
+                'formats': formats,
+                'requested_formats': [formats[3], formats[1]],
+                'url': '',
+            }),
+            stderr='',
+        )
+
+        result = app_module.downloader._parse_video_with_ytdlp(
+            'https://www.bilibili.com/video/BV1c7GA6kEqN/',
+            'https://www.bilibili.com/video/BV1c7GA6kEqN/',
+        )
+
+        self.assertTrue(result['success'])
+        info = result['video_info']
+        self.assertIn('quality_sizes', info)
+        self.assertEqual(set(info['quality_sizes'].keys()), {'360', '720', '1080'})
+        # 三档体积应不同，且默认展示的 size 与 720p 档一致
+        self.assertEqual(len(set(info['quality_sizes'].values())), 3)
+        self.assertEqual(info['size'], info['quality_sizes']['720'])
+        self.assertNotEqual(info['quality_sizes_readable']['360'], info['quality_sizes_readable']['1080'])
+
+    @mock.patch.object(app_module.downloader.proxy_manager, 'get_proxies', return_value=[])
+    @mock.patch('downloader.subprocess.run')
+    def test_youtube_parse_has_no_quality_sizes(self, run, _get_proxies):
+        """YouTube 走轻量解析，HLS 分片流本身不带总体积，不应假装有三档数据。"""
+        run.return_value = mock.Mock(
+            returncode=0,
+            stdout='{"id":"abc","title":"Test","duration":10,"thumbnail":"thumb","ext":"mp4"}\n',
+            stderr='',
+        )
+
+        result = app_module.downloader._parse_youtube_lightweight(
+            'https://www.youtube.com/watch?v=abc',
+            'https://www.youtube.com/watch?v=abc',
+        )
+
+        self.assertTrue(result['success'])
+        self.assertNotIn('quality_sizes', result['video_info'])
+        self.assertEqual(result['video_info']['size_readable'], 'Unknown')
 
     def test_impersonate_dependency_error_does_not_expose_traceback(self):
         parsed = app_module.downloader._parse_error(

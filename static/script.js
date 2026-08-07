@@ -275,6 +275,7 @@ function bindEvents() {
     elements.videoUrl.addEventListener('input', handleInput);
     elements.clearBtn.addEventListener('click', handleClear);
     elements.downloadBtn.addEventListener('click', handleDownload);
+    elements.qualitySelect.addEventListener('change', updateSizeForSelectedQuality);
 
     // 语言切换事件
     document.getElementById('lang-zh').addEventListener('click', () => translate('zh'));
@@ -531,10 +532,26 @@ function displayVideoInfo(videoInfo) {
         (videoInfo.page_url && /(?:bilibili\.com|b23\.tv)/i.test(videoInfo.page_url));
     elements.qualityControl.style.display = (isYouTube || isBilibili) ? 'flex' : 'none';
     elements.qualitySelect.value = '720';
+    updateSizeForSelectedQuality();
     resetDownloadProgress();
 
     // 显示视频结果
     showVideoResult();
+}
+
+// 根据当前选中的清晰度，刷新页面上显示的体积
+// 目前只有 B站 在解析阶段拿到了每档清晰度的准确体积，
+// YouTube 因该档清晰度不提供体积数据（HLS 分片流协议本身不带总大小），保持 "--"
+function updateSizeForSelectedQuality() {
+    const videoInfo = appState.videoInfo;
+    if (!videoInfo) return;
+
+    const sizesReadable = videoInfo.quality_sizes_readable;
+    if (!sizesReadable) return;
+
+    const quality = elements.qualitySelect.value || '720';
+    const readable = sizesReadable[quality];
+    elements.videoSize.textContent = (readable && readable !== 'Unknown') ? readable : '--';
 }
 
 // 显示视频结果

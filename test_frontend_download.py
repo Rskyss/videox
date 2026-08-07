@@ -33,6 +33,11 @@ class FrontendDownloadContractTestCase(unittest.TestCase):
         self.assertIn('isBilibili', self.script)
         self.assertIn('(isYouTube || isBilibili)', self.script)
 
+    def test_size_display_updates_when_quality_changes(self):
+        self.assertIn("qualitySelect.addEventListener('change', updateSizeForSelectedQuality)", self.script)
+        self.assertIn('function updateSizeForSelectedQuality', self.script)
+        self.assertIn('quality_sizes_readable', self.script)
+
     def test_non_json_parse_errors_are_handled(self):
         self.assertIn("contentType.includes('application/json')", self.script)
         self.assertIn('parseApiResponse(', self.script)

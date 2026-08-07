@@ -44,3 +44,7 @@ videox_download_jobs/
 # Log files
 *.log
 daily_stats.txt
+
+# 内部文档：仅本机留存，不进公开仓库
+CLAUDE.md
+docs/

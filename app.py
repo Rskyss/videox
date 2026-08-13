@@ -626,6 +626,20 @@ def index():
     return render_template('index.html')
 
 
+@app.route('/terms')
+@app.route('/terms/')
+def terms():
+    """用户协议（与客户端官网同一份文案）"""
+    return render_template('terms.html')
+
+
+@app.route('/privacy')
+@app.route('/privacy/')
+def privacy():
+    """隐私政策（与客户端官网同一份文案）"""
+    return render_template('privacy.html')
+
+
 @app.route('/check-env', methods=['GET'])
 def check_env():
     """
@@ -1542,7 +1556,7 @@ if __name__ == '__main__':
     app.run(
         debug=False,  # 生产环境必须关闭debug
         host='0.0.0.0',  # 监听所有网络接口
-        port=5001,  # 端口设置为5003
+        port=5009,
         threaded=True,   # 启用多线程
         use_reloader=False  # 生产环境关闭自动重载
     )

@@ -13,9 +13,9 @@ class FrontendDownloadContractTestCase(unittest.TestCase):
             cls.script = handle.read()
 
     def test_quality_picker_has_supported_values(self):
-        values = set(re.findall(r'<option value="(\d+)"', self.html))
+        values = set(re.findall(r'data-quality="(\d+)"', self.html))
         self.assertEqual(values, {'360', '720', '1080'})
-        self.assertIn('<option value="720" data-i18n="quality-720" selected>', self.html)
+        self.assertRegex(self.html, r'data-quality="720"[^>]*\bon\b|class="q on"[^>]*data-quality="720"')
 
     def test_merge_platforms_use_job_progress_then_auto_save(self):
         self.assertIn("fetch('/download-jobs'", self.script)
@@ -60,7 +60,7 @@ class FrontendDownloadContractTestCase(unittest.TestCase):
         self.assertIn('(isYouTube || isBilibili)', self.script)
 
     def test_size_display_updates_when_quality_changes(self):
-        self.assertIn("qualitySelect.addEventListener('change', updateSizeForSelectedQuality)", self.script)
+        self.assertIn('updateSizeForSelectedQuality()', self.script)
         self.assertIn('function updateSizeForSelectedQuality', self.script)
         self.assertIn('quality_sizes_readable', self.script)
 
@@ -68,7 +68,7 @@ class FrontendDownloadContractTestCase(unittest.TestCase):
         self.assertIn('function applyQualityOptions', self.script)
         self.assertIn('available_qualities', self.script)
         self.assertIn('quality_labels', self.script)
-        self.assertIn('option.hidden = !isAvailable', self.script)
+        self.assertIn('chip.hidden = !isAvailable', self.script)
 
     def test_non_json_parse_errors_are_handled(self):
         self.assertIn("contentType.includes('application/json')", self.script)

@@ -34,7 +34,7 @@ python3 -m pip install -r requirements.txt
 bash start.sh
 ```
 
-浏览器打开：**http://127.0.0.1:5001**
+浏览器打开：**http://127.0.0.1:5009**
 
 也可以手动启动：
 

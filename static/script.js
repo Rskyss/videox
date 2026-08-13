@@ -1,108 +1,152 @@
-// 翻译字典
 const translations = {
     zh: {
         'page-title': '视频解析神器 - 免费无水印视频解析下载工具',
-        'title': '视频解析神器',
-        'subtitle': '粘贴视频链接即可轻松解析和下载',
-        'input-placeholder': '在此粘贴视频链接...',
+        'title': '把视频存到你自己手里',
+        'subtitle': '粘贴链接就能下。要更快、能批量、断了能接上，就装 Mac 客户端。',
+        'input-placeholder': '粘贴视频链接或分享文案',
         'parse-btn': '解析',
-        'duration': '时长',
-        'size': '大小',
         'download-btn': '下载视频',
-        'platforms-support': '支持以下平台的视频解析，类型不断增加中',
-        'footer-info': '基于 yt-dlp 构建 | 仅供学习使用',
-        'footer-disclaimer': '下载处理文件仅临时保存并自动过期。所有视频和图片均属于其各自所有者和源网站。',
+        'nav-cta': 'Mac 客户端',
+        'fine-a': '免费 · 无需注册 · 最高 1080p',
+        'expire-note': '链接 1 小时后过期',
+        'after-txt': '经常下载？VideoX for Mac 不排队，文件直接落硬盘，能一次排好几条。',
+        'after-link': '了解 →',
+        'hero-or': '或者',
+        'hero-orlink': '下载 VideoX for Mac →',
+        'mac-h2': '同一个 VideoX，装在你自己的 Mac 上',
+        'mac-sub': '解析、下载和合并全部在本机完成，不经过服务器中转。',
+        'shot-prev': '上一张',
+        'shot-next': '下一张',
+        'f1-t': '不用排队',
+        'f1-d': '网页版人多时要等服务器分配。客户端在你自己电脑上跑，点了立刻开始。',
+        'f2-t': '文件直接落硬盘',
+        'f2-d': '网页版的下载链接一小时后过期。客户端下完直接进你指定的文件夹。',
+        'f3-t': '能排队批量下',
+        'f3-d': '一条正在下时可以先把下一条加进来，前一条结束自动开始下一条。',
+        'f4-t': '断了能接上',
+        'f4-d': '随时暂停继续。关掉 App 再打开，没下完的任务还在原来的进度上。',
+        'dl-meta': 'macOS 13 或更高 · Apple Silicon · 139 MB\n公测期需要注册账号，一个账号绑定一台 Mac',
+        'dl-notmac': '检测到你现在用的不是 Mac。客户端目前只有 macOS 版，\nWindows 版还在计划里——留个邮箱，做好了通知你。',
+        'dl-btn': '下载公测版',
+        'dl-mailph': '你的邮箱',
+        'dl-mailbtn': '通知我',
+        'foot-mail': '反馈',
+        'foot-terms': '用户协议',
+        'foot-privacy': '隐私政策',
+        'foot-dis': '请只保存你有权保存的内容，使用责任由你自行承担。',
         'parsing': '解析中...',
-        'env-check-passed': '✅ 环境检查通过，可以开始使用',
-        'env-check-installing': '检测到 yt-dlp 未安装，正在自动安装...',
-        'env-check-failed': '❌ 环境检查失败',
-        'install-success': '✅ yt-dlp 安装成功',
-        'install-failed': '❌ yt-dlp 安装失败',
-        'install-request-failed': '❌ 安装请求失败',
+        'env-check-passed': '环境检查通过，可以开始使用',
+        'env-check-installing': '检测到解析组件未就绪，正在自动安装...',
+        'env-check-failed': '环境检查失败',
+        'install-success': '解析组件安装成功',
+        'install-failed': '解析组件安装失败',
+        'install-request-failed': '安装请求失败',
         'enter-link': '请输入视频链接',
         'parse-failed': '解析失败',
         'unknown-error': '发生未知错误',
         'no-video-info': '没有可下载的视频信息',
-        'download-started': '✅ 下载已开始，请在浏览器下载栏查看',
-        'download-fetching-cdn': '📥 正在通过小红书线路获取视频…',
-        'download-merging': '🎬 服务器正在合并视频和音频流',
+        'download-started': '下载已开始，请在浏览器下载栏查看',
+        'download-fetching-cdn': '正在获取视频…',
+        'download-merging': '服务器正在合并视频和音频流',
         'download-processing': '服务器处理中',
         'download-btn-retry': '重新下载',
-        'quality-label': '清晰度',
-        'quality-360': '360p · 快速',
-        'quality-720': '720p · 推荐',
-        'quality-1080': '1080p · 高清',
+        'quality-360': '360p',
+        'quality-720': '720p',
+        'quality-1080': '1080p',
         'download-queued': '任务排队中',
         'download-downloading': '正在下载视频',
         'download-merging-status': '正在合并音视频',
         'download-ready': '处理完成，正在保存到本地',
         'download-timeout': '下载任务超时，请稍后重试',
         'server-timeout': '服务器处理超时，请稍后重试',
+        'notify-invalid': '请先填写有效邮箱',
         'faq-heading': '常见问题',
-        'faq-q1': '视频解析神器是免费的吗？',
-        'faq-a1': '完全免费。无需注册、无需安装软件，也不收取任何费用。',
-        'faq-q2': '下载的视频有水印吗？',
-        'faq-a2': '没有。抖音、TikTok、B站、小红书解析后的视频均为无水印，并保留原始清晰度。',
-        'faq-q3': '支持哪些平台？',
-        'faq-a3': '支持抖音、B站、小红书、YouTube、TikTok、Twitter/X。YouTube 与 B站 支持选择 360p、720p、1080p。',
-        'faq-q4': '为什么链接解析失败？',
-        'faq-a4': '可能是链接不正确，或视频已被删除、设为私密、仍在审核中。请重新复制分享链接后再试一次。',
-        'faq-q5': '会保存我下载的视频吗？',
-        'faq-a5': '普通直链由浏览器直接下载；需要合并的视频在服务器临时处理后自动保存到你的电脑，传完即删。'
+        'faq-q1': '网页版真的免费吗？有次数限制吗？',
+        'faq-a1': '免费，不需要注册，也没有每日次数限制。人多的时候可能需要排队等一会儿。',
+        'faq-q2': '我下载的视频会被你们保存吗？',
+        'faq-a2': '不会。网页版的文件在服务器上只临时存放，下载链接 1 小时后过期、文件随后清除。客户端整个过程都在你自己电脑上，不经过我们的服务器。',
+        'faq-q3': '既然网页版够用，为什么还要装客户端？',
+        'faq-a3': '画质是一样的，都到 1080p。客户端的价值在四件事：不排队、文件直接落硬盘不会过期、能一次排好几条、断了能接着下。偶尔用一次网页版完全够。',
+        'faq-q4': '客户端为什么要注册账号？',
+        'faq-a4': '公测期一个账号绑定一台 Mac，这样出问题时能通知到你。链接、视频和文件不会自动上传；只有你在反馈里主动勾选时，才会附上那一条链接。网页版不需要注册。',
+        'faq-q5': 'Intel 的 Mac 或者 Windows 能用吗？',
+        'faq-a5': '客户端暂时只有 Apple Silicon（M1 及以后）的版本。Intel Mac 和 Windows 用户可以用网页版，功能一样，画质一样。'
     },
     en: {
         'page-title': 'Free Video Downloader – TikTok, Douyin, Bilibili | VideoX',
-        'title': 'Video Parsing Prodigy',
-        'subtitle': 'Paste video link to easily parse and download',
-        'input-placeholder': 'Paste video link here...',
+        'title': 'Keep your videos on your own drive',
+        'subtitle': 'Paste a link and download. Want it faster, in batches, resumable? Get the Mac app.',
+        'input-placeholder': 'Paste a video link or shared text',
         'parse-btn': 'Parse',
-        'duration': 'Duration',
-        'size': 'Size',
         'download-btn': 'Download Video',
-        'platforms-support': 'Support video analysis for the following platforms, The types are constantly increasing.',
-        'footer-info': 'Built with yt-dlp | For educational use only',
-        'footer-disclaimer': 'Download processing files are temporary and expire automatically. All videos and images belong to their respective owners and source websites.',
-        'parsing': 'Parsing...',
-        'env-check-passed': '✅ Environment check passed, ready to use',
-        'env-check-installing': 'Detected yt-dlp not installed, installing automatically...',
-        'env-check-failed': '❌ Environment check failed',
-        'install-success': '✅ yt-dlp installed successfully',
-        'install-failed': '❌ yt-dlp installation failed',
-        'install-request-failed': '❌ Installation request failed',
+        'nav-cta': 'Mac app',
+        'fine-a': 'Free · No sign-up · Up to 1080p',
+        'expire-note': 'Link expires in 1 hour',
+        'after-txt': 'Downloading often? VideoX for Mac skips the queue, saves straight to your drive, and takes several at once.',
+        'after-link': 'Take a look →',
+        'hero-or': 'or',
+        'hero-orlink': 'Download VideoX for Mac →',
+        'mac-h2': 'The same VideoX, running on your own Mac',
+        'mac-sub': 'Parsing, downloading and merging all happen locally — nothing routes through our servers.',
+        'shot-prev': 'Previous',
+        'shot-next': 'Next',
+        'f1-t': 'No waiting in line',
+        'f1-d': 'The web version queues when the server is busy. The app runs on your machine and starts the moment you click.',
+        'f2-t': 'Files land on your drive',
+        'f2-d': 'Web links expire after an hour. The app saves straight into the folder you picked.',
+        'f3-t': 'Queue them up',
+        'f3-d': 'Add the next link while one is downloading — the next starts by itself when the first ends.',
+        'f4-t': 'Resumable',
+        'f4-d': 'Pause and continue whenever. Quit and reopen — unfinished downloads pick up where they left off.',
+        'dl-meta': 'macOS 13 or later · Apple Silicon · 139 MB\nSign-up required during the beta; one account per Mac',
+        'dl-notmac': 'Looks like you are not on a Mac. The app is macOS-only for now —\na Windows version is on the list. Leave your email and I will let you know.',
+        'dl-btn': 'Download beta',
+        'dl-mailph': 'Your email',
+        'dl-mailbtn': 'Notify me',
+        'foot-mail': 'Feedback',
+        'foot-terms': 'Terms',
+        'foot-privacy': 'Privacy',
+        'foot-dis': 'Only save content you have the right to save; you are responsible for how you use it.',
+        'parsing': 'Parsing…',
+        'env-check-passed': 'Environment check passed, ready to use',
+        'env-check-installing': 'Parser is not ready, installing automatically…',
+        'env-check-failed': 'Environment check failed',
+        'install-success': 'Parser installed successfully',
+        'install-failed': 'Parser installation failed',
+        'install-request-failed': 'Install request failed',
         'enter-link': 'Please enter video link',
         'parse-failed': 'Parse failed',
         'unknown-error': 'Unknown error occurred',
         'no-video-info': 'No video information available for download',
-        'download-started': '✅ Download started — check your browser download bar',
-        'download-fetching-cdn': '📥 Fetching video via Xiaohongshu CDN…',
-        'download-merging': '🎬 Server is merging video and audio streams',
+        'download-started': 'Download started — check your browser download bar',
+        'download-fetching-cdn': 'Fetching video…',
+        'download-merging': 'Server is merging video and audio streams',
         'download-processing': 'Server processing',
         'download-btn-retry': 'Re-download',
-        'quality-label': 'Quality',
-        'quality-360': '360p · Fast',
-        'quality-720': '720p · Recommended',
-        'quality-1080': '1080p · HD',
+        'quality-360': '360p',
+        'quality-720': '720p',
+        'quality-1080': '1080p',
         'download-queued': 'Waiting in queue',
         'download-downloading': 'Downloading video',
         'download-merging-status': 'Merging audio and video',
         'download-ready': 'Ready — saving to your device',
         'download-timeout': 'Download task timed out. Please try again later.',
         'server-timeout': 'Server processing timed out. Please try again later.',
+        'notify-invalid': 'Please enter a valid email',
         'faq-heading': 'Frequently Asked Questions',
-        'faq-q1': 'Is VideoX free to use?',
-        'faq-a1': 'Yes. VideoX is completely free. No registration, no software installation and no payment is required.',
-        'faq-q2': 'Do downloaded videos have a watermark?',
-        'faq-a2': 'No. Videos parsed from Douyin, TikTok, Bilibili and Xiaohongshu are saved without watermarks and keep their original resolution.',
-        'faq-q3': 'Which platforms are supported?',
-        'faq-a3': 'Douyin, Bilibili, Xiaohongshu, YouTube, TikTok and Twitter/X are supported. YouTube and Bilibili support 360p, 720p and 1080p.',
-        'faq-q4': 'Why did my link fail to parse?',
-        'faq-a4': 'The link may be incorrect, or the video has been deleted, set to private or is still under review. Copy the share link again and retry.',
-        'faq-q5': 'Do you store the videos I download?',
-        'faq-a5': 'Direct links go to your browser. Videos that need merging are processed temporarily on the server, then automatically saved to your device and deleted afterward.'
+        'faq-q1': 'Is the web version really free? Any limit?',
+        'faq-a1': 'Free, no sign-up, no daily cap. You may wait in a queue when traffic is high.',
+        'faq-q2': 'Do you keep the videos I download?',
+        'faq-a2': 'No. On the web version files sit on the server only temporarily — the link expires after an hour and the file is cleared. The app runs entirely on your machine and never touches our servers.',
+        'faq-q3': 'If the web version is enough, why install the app?',
+        'faq-a3': 'Quality is the same — 1080p both ways. The app wins on four things: no queue, files that land on your drive and never expire, several downloads at once, and resuming after a drop. For the occasional video the web version is fine.',
+        'faq-q4': 'Why does the app need an account?',
+        'faq-a4': 'During the beta one account is tied to one Mac, so I can reach you when something breaks. Links, videos and files are never uploaded automatically — only the one link you tick when sending feedback. The web version needs no account.',
+        'faq-q5': 'Intel Mac or Windows?',
+        'faq-a5': 'The app is Apple Silicon only (M1 and later) for now. Intel Mac and Windows users can use the web version — same features, same quality.'
     }
 };
 
-// 应用状态
 const appState = {
     isLoading: false,
     isDownloading: false,
@@ -111,53 +155,66 @@ const appState = {
     downloadSeconds: 0,
     videoInfo: null,
     error: null,
-    currentLang: 'en'
+    currentLang: 'zh'
 };
 
-// DOM元素
-const elements = {
-    videoUrl: document.getElementById('video-url'),
-    parseBtn: document.getElementById('parse-btn'),
-    clearBtn: document.getElementById('clear-btn'),
-    btnText: document.querySelector('.btn-text'),
-    spinner: document.querySelector('.spinner'),
-    errorMessage: document.getElementById('error-message'),
-    videoResult: document.getElementById('video-result'),
-    videoThumbnail: document.getElementById('video-thumbnail'),
-    videoPlatform: document.getElementById('video-platform'),
-    videoTitle: document.getElementById('video-title'),
-    videoDuration: document.getElementById('video-duration'),
-    videoSize: document.getElementById('video-size'),
-    qualityControl: document.getElementById('quality-control'),
-    qualitySelect: document.getElementById('quality-select'),
-    downloadProgress: document.getElementById('download-progress'),
-    downloadStatus: document.getElementById('download-status'),
-    downloadPercent: document.getElementById('download-percent'),
-    downloadProgressBar: document.getElementById('download-progress-bar'),
-    downloadBtn: document.getElementById('download-btn'),
-    envStatus: document.getElementById('env-status'),
-    urlForm: document.getElementById('url-form')
-};
+const elements = {};
 
-// 翻译函数
+function t(key) {
+    return (translations[appState.currentLang] && translations[appState.currentLang][key])
+        || translations.zh[key]
+        || key;
+}
+
+function cacheElements() {
+    elements.videoUrl = document.getElementById('video-url');
+    elements.clearBtn = document.getElementById('clear-btn');
+    elements.parseBtn = document.getElementById('parse-btn');
+    elements.btnText = document.querySelector('#parse-btn .btn-text');
+    elements.errorMessage = document.getElementById('error-message');
+    elements.videoResult = document.getElementById('video-result');
+    elements.videoThumbnail = document.getElementById('video-thumbnail');
+    elements.thumbWrap = document.getElementById('thumb-wrap');
+    elements.videoPlatform = document.getElementById('video-platform');
+    elements.videoTitle = document.getElementById('video-title');
+    elements.videoDuration = document.getElementById('video-duration');
+    elements.videoSize = document.getElementById('video-size');
+    elements.qualityControl = document.getElementById('quality-control');
+    elements.downloadProgress = document.getElementById('download-progress');
+    elements.downloadStatus = document.getElementById('download-status');
+    elements.downloadPercent = document.getElementById('download-percent');
+    elements.downloadProgressBar = document.getElementById('download-progress-bar');
+    elements.downloadBtn = document.getElementById('download-btn');
+    elements.envStatus = document.getElementById('env-status');
+    elements.urlForm = document.getElementById('url-form');
+    elements.after = document.getElementById('after');
+    elements.orline = document.getElementById('orline');
+    elements.dlcard = document.getElementById('dlcard');
+    elements.notifyEmail = document.getElementById('notify-email');
+    elements.notifyBtn = document.getElementById('notify-btn');
+}
+
 function translate(lang) {
     appState.currentLang = lang;
 
-    // 同步浏览器标签标题和页面语言标记,保证搜索引擎读到的语言与实际显示一致
     if (translations[lang] && translations[lang]['page-title']) {
         document.title = translations[lang]['page-title'];
     }
     document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
 
-    // 翻译所有带data-i18n属性的元素
     document.querySelectorAll('[data-i18n]').forEach(element => {
         const key = element.getAttribute('data-i18n');
-        if (translations[lang] && translations[lang][key]) {
-            element.textContent = translations[lang][key];
+        const value = translations[lang] && translations[lang][key];
+        if (!value) return;
+        if (key === 'after-txt' || key === 'dl-meta' || key === 'dl-notmac') {
+            element.innerHTML = value
+                .replace('VideoX for Mac', '<b>VideoX for Mac</b>')
+                .replace(/\n/g, '<br>');
+            return;
         }
+        element.textContent = value;
     });
 
-    // 翻译placeholder
     document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
         const key = element.getAttribute('data-i18n-placeholder');
         if (translations[lang] && translations[lang][key]) {
@@ -165,266 +222,158 @@ function translate(lang) {
         }
     });
 
-    // 更新按钮激活状态
-    document.querySelectorAll('.lang-btn').forEach(btn => {
-        btn.classList.remove('active');
+    document.querySelectorAll('.lang button').forEach(btn => {
+        btn.classList.toggle('on', btn.dataset.lang === lang);
     });
-    document.querySelector(`[data-lang="${lang}"]`).classList.add('active');
 
-    // 保存语言设置到localStorage
     localStorage.setItem('preferred-lang', lang);
 
-    // 语言切换会重写 option 文案，需把 B站真实可用清晰度标签重新套回去
+    const shotPrev = document.getElementById('shot-prev');
+    const shotNext = document.getElementById('shot-next');
+    if (shotPrev) shotPrev.setAttribute('aria-label', t('shot-prev'));
+    if (shotNext) shotNext.setAttribute('aria-label', t('shot-next'));
+
     if (appState.videoInfo) {
         applyQualityOptions(appState.videoInfo);
         updateSizeForSelectedQuality();
+        updateDownloadLabel();
     }
 }
 
-// 检测是否为移动设备
-function isMobileDevice() {
-    // 检测 userAgent
-    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-    const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
-
-    // 检测触摸屏和屏幕宽度
-    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    const isSmallScreen = window.innerWidth <= 768;
-
-    return mobileRegex.test(userAgent) || (isTouchDevice && isSmallScreen);
+function preferredLang() {
+    const saved = localStorage.getItem('preferred-lang');
+    if (saved === 'zh' || saved === 'en') return saved;
+    const params = new URLSearchParams(location.search);
+    if (params.get('lang') === 'en') return 'en';
+    if (params.get('lang') === 'zh') return 'zh';
+    return /^zh\b/i.test(navigator.language || '') ? 'zh' : 'en';
 }
 
-// 显示移动端限制提示
-function showMobileRestriction() {
-    const lang = localStorage.getItem('preferred-lang') || 'en';
-    const message = lang === 'zh'
-        ? '目前不支持移动端H5访问，请访问PC/Mac页面'
-        : 'Mobile H5 access is not currently supported. Please visit PC/Mac page';
-
-    // 创建遮罩层
-    const overlay = document.createElement('div');
-    overlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.95);
-        z-index: 9999;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 2rem;
-    `;
-
-    // 创建提示框
-    const messageBox = document.createElement('div');
-    messageBox.style.cssText = `
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 1rem;
-        padding: 2rem;
-        max-width: 400px;
-        width: 100%;
-        text-align: center;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-    `;
-
-    // 添加图标
-    const icon = document.createElement('div');
-    icon.innerHTML = `
-        <svg style="width: 64px; height: 64px; margin: 0 auto 1rem; color: #fff;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" style="stroke-width: 2;" />
-        </svg>
-    `;
-
-    // 添加文字
-    const text = document.createElement('p');
-    text.textContent = message;
-    text.style.cssText = `
-        color: #fff;
-        font-size: 1.125rem;
-        line-height: 1.6;
-        margin: 0;
-        font-weight: 500;
-    `;
-
-    messageBox.appendChild(icon);
-    messageBox.appendChild(text);
-    overlay.appendChild(messageBox);
-    document.body.appendChild(overlay);
-
-    // 禁用页面滚动
-    document.body.style.overflow = 'hidden';
+function applyTheme(theme) {
+    document.documentElement.dataset.theme = theme === 'light' ? 'light' : 'dark';
+    localStorage.setItem('videox-theme', document.documentElement.dataset.theme);
 }
 
-// 初始化
-document.addEventListener('DOMContentLoaded', () => {
-    // 检测移动设备
-    if (isMobileDevice()) {
-        showMobileRestriction();
-        return; // 不继续执行其他初始化
-    }
+function detectNonMac() {
+    const params = new URLSearchParams(location.search);
+    if (params.has('win')) return true;
+    return !/Mac|Macintosh|Mac OS/i.test(navigator.userAgent || '');
+}
 
-    // 从localStorage获取语言设置
-    const savedLang = localStorage.getItem('preferred-lang') || 'en';
-    translate(savedLang);
-
-    // 检查侧边通知
-    checkSideNotification();
-
-    checkEnvironment();
-    bindEvents();
-});
-
-// 绑定事件
 function bindEvents() {
     elements.urlForm.addEventListener('submit', handleExtract);
     elements.videoUrl.addEventListener('input', handleInput);
     elements.clearBtn.addEventListener('click', handleClear);
     elements.downloadBtn.addEventListener('click', handleDownload);
-    elements.qualitySelect.addEventListener('change', updateSizeForSelectedQuality);
-
-    // 语言切换事件
+    document.querySelectorAll('.q[data-quality]').forEach(chip => {
+        chip.addEventListener('click', () => {
+            if (chip.hidden || chip.disabled) return;
+            document.querySelectorAll('.q[data-quality]').forEach(item => item.classList.remove('on'));
+            chip.classList.add('on');
+            updateSizeForSelectedQuality();
+            updateDownloadLabel();
+        });
+    });
     document.getElementById('lang-zh').addEventListener('click', () => translate('zh'));
     document.getElementById('lang-en').addEventListener('click', () => translate('en'));
-
-    // 侧边通知关闭按钮事件
-    const closeSideBtn = document.getElementById('close-side-btn');
-    if (closeSideBtn) {
-        closeSideBtn.addEventListener('click', handleCloseSideNotification);
+    document.getElementById('theme').addEventListener('click', () => {
+        const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+        applyTheme(next);
+    });
+    if (elements.notifyBtn) {
+        elements.notifyBtn.addEventListener('click', handleNotify);
     }
 }
 
-// 检查环境
 async function checkEnvironment() {
     try {
         const response = await fetch('/check-env');
         const data = await response.json();
-
         if (!data.ytdlp_installed) {
-            showEnvAlert(translations[appState.currentLang]['env-check-installing'], 'warning');
+            showEnvAlert(t('env-check-installing'), 'warning');
             await installYtdlp();
-        } else {
-            // 检查是否已经显示过环境检查成功的提示
-            const hasSeenEnvCheck = localStorage.getItem('env-check-seen');
-
-            // 只有第一次访问时才显示提示
-            if (!hasSeenEnvCheck) {
-                showEnvAlert(translations[appState.currentLang]['env-check-passed'], 'success');
-
-                // 标记用户已经看过提示
-                localStorage.setItem('env-check-seen', 'true');
-
-                setTimeout(() => {
-                    hideEnvAlert();
-                }, 3000);
-            }
         }
     } catch (error) {
-        showEnvAlert(translations[appState.currentLang]['env-check-failed'] + ': ' + error.message, 'error');
+        showEnvAlert(t('env-check-failed') + ': ' + error.message, 'error');
     }
 }
 
-// 安装 yt-dlp
 async function installYtdlp() {
     try {
         const response = await fetch('/install-ytdlp', { method: 'POST' });
         const data = await response.json();
-
         if (data.success) {
-            showEnvAlert(translations[appState.currentLang]['install-success'], 'success');
-
-            // 标记用户已经看过提示（安装成功后也算看过）
-            localStorage.setItem('env-check-seen', 'true');
-
-            setTimeout(() => {
-                hideEnvAlert();
-            }, 3000);
+            showEnvAlert(t('install-success'), 'success');
+            setTimeout(hideEnvAlert, 3000);
         } else {
-            showEnvAlert(translations[appState.currentLang]['install-failed'] + ': ' + data.error, 'error');
+            showEnvAlert(t('install-failed') + ': ' + data.error, 'error');
         }
     } catch (error) {
-        showEnvAlert(translations[appState.currentLang]['install-request-failed'] + ': ' + error.message, 'error');
+        showEnvAlert(t('install-request-failed') + ': ' + error.message, 'error');
     }
 }
 
-// 显示环境警告
 function showEnvAlert(message, type = 'warning') {
     elements.envStatus.textContent = message;
     elements.envStatus.className = `alert-box ${type}`;
     elements.envStatus.style.display = 'block';
 }
 
-// 隐藏环境警告
 function hideEnvAlert() {
-    // 添加hiding类触发动画
-    elements.envStatus.classList.add('hiding');
-
-    // 动画结束后真正隐藏元素
-    setTimeout(() => {
-        elements.envStatus.style.display = 'none';
-        elements.envStatus.classList.remove('hiding');
-    }, 250); // 与CSS transition时间一致
+    elements.envStatus.style.display = 'none';
 }
 
-// 处理输入
 function handleInput() {
     const url = elements.videoUrl.value.trim();
-
-    // 更新按钮状态
     elements.parseBtn.disabled = !url || appState.isLoading;
+    elements.clearBtn.hidden = !elements.videoUrl.value;
 }
 
-// 处理清空
+// 清空输入框；沿用旧版行为，只清输入不动已解析的结果
 function handleClear() {
     elements.videoUrl.value = '';
     elements.videoUrl.focus();
     handleInput();
-    // 只隐藏清空按钮，不清除结果和错误
-    elements.clearBtn.style.display = 'none';
 }
 
-// 处理解析
+function handleNotify() {
+    const email = (elements.notifyEmail.value || '').trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showError(t('notify-invalid'));
+        return;
+    }
+    clearError();
+    const subject = encodeURIComponent('VideoX Windows version notify');
+    const body = encodeURIComponent(`Please notify me when the Windows version is ready.\nEmail: ${email}`);
+    window.location.href = `mailto:vtwskk@gmail.com?subject=${subject}&body=${body}`;
+}
+
 async function handleExtract(e) {
     e.preventDefault();
-
     const url = elements.videoUrl.value.trim();
-
     if (!url) {
-        showError(translations[appState.currentLang]['enter-link']);
+        showError(t('enter-link'));
         return;
     }
 
-    // 重置状态
     setLoading(true);
     clearError();
     hideVideoResult();
 
     try {
-        // 调用后端解析API
         const response = await fetch('/parse-video', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ url })
         });
-
         const data = await parseApiResponse(response);
-
         if (!data.success) {
-            throw new Error(data.error || data.message || translations[appState.currentLang]['parse-failed']);
+            throw new Error(data.error || data.message || t('parse-failed'));
         }
-
-        // 保存视频信息
         appState.videoInfo = data.video_info;
-
-        // 显示视频信息
         displayVideoInfo(data.video_info);
-
     } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : translations[appState.currentLang]['unknown-error'];
+        const errorMessage = error instanceof Error ? error.message : t('unknown-error');
         showError(errorMessage);
         hideVideoResult();
     } finally {
@@ -454,78 +403,53 @@ async function parseApiResponse(response) {
     throw new Error(`Server returned HTTP ${response.status}`);
 }
 
-// 设置加载状态
 function setLoading(loading) {
     appState.isLoading = loading;
     elements.parseBtn.disabled = loading || !elements.videoUrl.value.trim();
     elements.videoUrl.disabled = loading;
-
-    if (loading) {
-        elements.btnText.textContent = translations[appState.currentLang]['parsing'];
-        elements.spinner.style.display = 'block';
-    } else {
-        elements.btnText.textContent = translations[appState.currentLang]['parse-btn'];
-        elements.spinner.style.display = 'none';
-    }
+    elements.btnText.textContent = loading ? t('parsing') : t('parse-btn');
 }
 
-// 显示错误
 function showError(message) {
     appState.error = message;
     elements.errorMessage.textContent = message;
     elements.errorMessage.style.display = 'block';
 }
 
-// 清除错误
 function clearError() {
     appState.error = null;
     elements.errorMessage.style.display = 'none';
 }
 
-// 显示视频信息
+function thumbnailSrc(thumbnail) {
+    const needsProxy = thumbnail.includes('hdslb.com') ||
+        thumbnail.includes('bilivideo.com') ||
+        thumbnail.includes('xhscdn.com') ||
+        thumbnail.includes('xiaohongshu.com');
+    return needsProxy ? `/proxy-thumbnail?url=${encodeURIComponent(thumbnail)}` : thumbnail;
+}
+
 function displayVideoInfo(videoInfo) {
-    // 显示清空按钮（只在有解析结果时显示）
-    elements.clearBtn.style.display = 'flex';
-
-
-    // 更新缩略图
     if (videoInfo.thumbnail && videoInfo.thumbnail.trim() !== '') {
-        // 判断是否需要代理(只有B站、小红书等需要Referer验证的平台才使用代理)
-        const needsProxy = videoInfo.thumbnail.includes('hdslb.com') ||
-            videoInfo.thumbnail.includes('bilivideo.com') ||
-            videoInfo.thumbnail.includes('xhscdn.com') ||
-            videoInfo.thumbnail.includes('xiaohongshu.com');
-
-        if (needsProxy) {
-            // B站、小红书等平台使用代理URL,解决Referer防盗链问题
-            elements.videoThumbnail.src = `/proxy-thumbnail?url=${encodeURIComponent(videoInfo.thumbnail)}`;
-        } else {
-            // 其他平台直接使用原始URL(抖音/YouTube/TikTok等)
-            elements.videoThumbnail.src = videoInfo.thumbnail;
-        }
+        elements.videoThumbnail.src = thumbnailSrc(videoInfo.thumbnail);
         elements.videoThumbnail.alt = videoInfo.title || 'Video thumbnail';
+        elements.thumbWrap.classList.add('has-img');
     } else {
-        // 如果没有缩略图，使用占位图(方形)
-        elements.videoThumbnail.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="400"%3E%3Crect fill="%23374151" width="400" height="400"/%3E%3Ctext fill="%239ca3af" font-family="Arial" font-size="24" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3ENo thumbnail%3C/text%3E%3C/svg%3E';
-        elements.videoThumbnail.alt = 'No thumbnail';
+        elements.videoThumbnail.removeAttribute('src');
+        elements.thumbWrap.classList.remove('has-img');
     }
 
-    // 更新平台
     elements.videoPlatform.textContent = videoInfo.platform || 'Unknown';
-
-    // 更新标题
     elements.videoTitle.textContent = videoInfo.title || 'No title';
 
-    // 更新时长
     if (videoInfo.duration_readable && videoInfo.duration_readable !== 'Unknown') {
         elements.videoDuration.textContent = videoInfo.duration_readable;
     } else if (videoInfo.duration) {
         elements.videoDuration.textContent = videoInfo.duration;
     } else {
-        elements.videoDuration.textContent = '--';
+        elements.videoDuration.textContent = '';
     }
 
-    // 更新大小
     if (videoInfo.size_readable && videoInfo.size_readable !== 'Unknown') {
         elements.videoSize.textContent = videoInfo.size_readable;
     } else if (videoInfo.size) {
@@ -541,49 +465,52 @@ function displayVideoInfo(videoInfo) {
     elements.qualityControl.style.display = (isYouTube || isBilibili) ? 'flex' : 'none';
     applyQualityOptions(videoInfo);
     updateSizeForSelectedQuality();
+    updateDownloadLabel();
     resetDownloadProgress();
-
-    // 显示视频结果
     showVideoResult();
 }
 
-// B站按真实可用分辨率隐藏更高档；中间档（如最高只有 480）会改成「480p · 最高」
+function qualityChips() {
+    return Array.from(document.querySelectorAll('.q[data-quality]'));
+}
+
+function selectedQuality() {
+    const on = document.querySelector('.q[data-quality].on:not([hidden])');
+    return on ? on.dataset.quality : '720';
+}
+
 function applyQualityOptions(videoInfo) {
     const available = Array.isArray(videoInfo.available_qualities)
         ? videoInfo.available_qualities.map(String)
         : null;
     const labels = videoInfo.quality_labels || {};
+    const sizesReadable = videoInfo.quality_sizes_readable || {};
     const defaultQuality = String(
         videoInfo.default_quality
         || (available && available.length ? available[available.length - 1] : '720')
     );
 
-    Array.from(elements.qualitySelect.options).forEach((option) => {
-        const quality = option.value;
+    qualityChips().forEach((chip) => {
+        const quality = chip.dataset.quality;
         const isAvailable = !available || available.includes(quality);
-        option.hidden = !isAvailable;
-        option.disabled = !isAvailable;
-        if (labels[quality]) {
-            option.textContent = labels[quality];
-        } else {
-            const i18nKey = option.getAttribute('data-i18n');
-            option.textContent = (i18nKey && translations[appState.currentLang][i18nKey])
-                || option.textContent;
+        chip.hidden = !isAvailable;
+        chip.disabled = !isAvailable;
+        const label = labels[quality] || `${quality}p`;
+        const small = chip.querySelector('small');
+        chip.childNodes[0].textContent = String(label).replace(/\s*·.*$/, '') || `${quality}p`;
+        if (small) {
+            const readable = sizesReadable[quality];
+            small.textContent = (readable && readable !== 'Unknown') ? readable : '';
+            small.hidden = !small.textContent;
         }
     });
 
-    if (!available || available.includes(defaultQuality)) {
-        elements.qualitySelect.value = defaultQuality;
-    } else if (available.length) {
-        elements.qualitySelect.value = available[available.length - 1];
-    } else {
-        elements.qualitySelect.value = '720';
-    }
+    const visible = qualityChips().filter(chip => !chip.hidden);
+    let target = visible.find(chip => chip.dataset.quality === defaultQuality) || visible[visible.length - 1];
+    qualityChips().forEach(chip => chip.classList.remove('on'));
+    if (target) target.classList.add('on');
 }
 
-// 根据当前选中的清晰度，刷新页面上显示的体积
-// 目前只有 B站 在解析阶段拿到了每档清晰度的准确体积，
-// YouTube 因该档清晰度不提供体积数据（HLS 分片流协议本身不带总大小），保持 "--"
 function updateSizeForSelectedQuality() {
     const videoInfo = appState.videoInfo;
     if (!videoInfo) return;
@@ -591,21 +518,38 @@ function updateSizeForSelectedQuality() {
     const sizesReadable = videoInfo.quality_sizes_readable;
     if (!sizesReadable) return;
 
-    const quality = elements.qualitySelect.value || videoInfo.default_quality || '720';
+    const quality = selectedQuality() || videoInfo.default_quality || '720';
     const readable = sizesReadable[quality];
     elements.videoSize.textContent = (readable && readable !== 'Unknown') ? readable : '--';
 }
 
-// 显示视频结果
-function showVideoResult() {
-    elements.videoResult.style.display = 'block';
+function updateDownloadLabel() {
+    const btnTextEl = elements.downloadBtn.querySelector('span');
+    if (!btnTextEl || appState.isDownloading) return;
+    if (elements.qualityControl.style.display === 'none') {
+        btnTextEl.textContent = t('download-btn');
+        return;
+    }
+    const quality = selectedQuality();
+    btnTextEl.textContent = appState.currentLang === 'en'
+        ? `Download ${quality}p`
+        : `下载 ${quality}p`;
 }
 
-// 隐藏视频结果
+function showVideoResult() {
+    elements.videoResult.classList.add('show');
+    elements.videoResult.style.display = 'block';
+    if (elements.after) elements.after.classList.add('show');
+    if (elements.orline) elements.orline.style.display = 'none';
+}
+
 function hideVideoResult() {
+    elements.videoResult.classList.remove('show');
     elements.videoResult.style.display = 'none';
-    elements.clearBtn.style.display = 'none';
     elements.qualityControl.style.display = 'none';
+    if (elements.after) elements.after.classList.remove('show');
+    if (elements.orline) elements.orline.style.display = '';
+    elements.thumbWrap.classList.remove('has-img');
     stopDownloadTimer();
     resetDownloadProgress();
 }
@@ -636,16 +580,11 @@ function isTrustedXiaohongshuMediaUrl(url) {
     }
 }
 
-// 处理下载：
-// - 需要合并的（YouTube / B站 / DASH）走后台任务 + 进度条，满了自动保存
-// - 小红书直链：浏览器直连 CDN（no-referrer），避免新加坡服务器中转过慢；不可直连时回退中转
-// - 其他普通直链走浏览器下载栏（经本站中转）
 function handleDownload() {
     if (!appState.videoInfo) {
-        showError(translations[appState.currentLang]['no-video-info']);
+        showError(t('no-video-info'));
         return;
     }
-
     if (appState.isDownloading) {
         return;
     }
@@ -657,7 +596,7 @@ function handleDownload() {
         (videoInfo.page_url && /(?:youtube\.com|youtu\.be)/i.test(videoInfo.page_url));
     const isBilibili = videoInfo.platform === 'B站' ||
         (videoInfo.page_url && /(?:bilibili\.com|b23\.tv)/i.test(videoInfo.page_url));
-    const quality = (isYouTube || isBilibili) ? (elements.qualitySelect.value || '720') : 'best';
+    const quality = (isYouTube || isBilibili) ? (selectedQuality() || '720') : 'best';
     const needsMerge = isYouTube || isBilibili || isDash;
 
     if (needsMerge) {
@@ -668,7 +607,6 @@ function handleDownload() {
     if (isXiaohongshuVideo(videoInfo)) {
         const directUrl = toHttpsMediaUrl(videoInfo.url);
         if (isTrustedXiaohongshuMediaUrl(directUrl)) {
-            // 直连 CDN 保存；绝不在当前页 302 跳转（否则会冲掉解析页并变成在线播放）
             startXiaohongshuCdnDownload(directUrl, filename);
             return;
         }
@@ -678,13 +616,10 @@ function handleDownload() {
     startBrowserDownload(proxyUrl, filename, false);
 }
 
-// 小红书直连下载：JS 先把 CDN 视频取到内存（Blob），再交给浏览器原生下载，
-// 这样右上角下载图标的表现和其他平台完全一致，不引入自定义进度条或系统保存对话框。
-// 若 CDN 拒绝跨域请求（极少数情况），回退到服务器中转下载。
 async function startXiaohongshuCdnDownload(directUrl, filename) {
     setDownloadingState(true);
     clearError();
-    showEnvAlert(translations[appState.currentLang]['download-fetching-cdn'], 'success');
+    showEnvAlert(t('download-fetching-cdn'), 'success');
 
     try {
         const response = await fetch(directUrl, {
@@ -712,18 +647,17 @@ function sleep(ms) {
 
 function updateJobProgress(status, progress, message, progressKnown = true) {
     const percent = Math.min(100, Math.max(0, Number(progress) || 0));
-    // 优先展示后端实时文案（如「正在下载音频」「网络不稳，正在重试」），
-    // 不要用笼统的「Downloading video」盖住，否则用户会以为卡死在 0%。
     let localizedStatus = (message || '').trim();
     if (!localizedStatus) {
-        localizedStatus = translations[appState.currentLang]['download-processing'];
-        if (status === 'queued') localizedStatus = translations[appState.currentLang]['download-queued'];
-        if (status === 'downloading') localizedStatus = translations[appState.currentLang]['download-downloading'];
-        if (status === 'merging') localizedStatus = translations[appState.currentLang]['download-merging-status'];
-        if (status === 'ready') localizedStatus = translations[appState.currentLang]['download-ready'];
+        localizedStatus = t('download-processing');
+        if (status === 'queued') localizedStatus = t('download-queued');
+        if (status === 'downloading') localizedStatus = t('download-downloading');
+        if (status === 'merging') localizedStatus = t('download-merging-status');
+        if (status === 'ready') localizedStatus = t('download-ready');
     }
 
     elements.downloadProgress.style.display = 'block';
+    elements.downloadProgress.classList.add('show');
     elements.downloadStatus.textContent = localizedStatus;
     elements.downloadProgressBar.classList.toggle('indeterminate', progressKnown === false);
     elements.downloadPercent.textContent = progressKnown === false ? '…' : `${Math.round(percent)}%`;
@@ -741,6 +675,7 @@ function updateJobProgress(status, progress, message, progressKnown = true) {
 function resetDownloadProgress() {
     if (!elements.downloadProgress) return;
     elements.downloadProgress.style.display = 'none';
+    elements.downloadProgress.classList.remove('show');
     elements.downloadStatus.textContent = '';
     elements.downloadPercent.textContent = '0%';
     elements.downloadProgressBar.style.width = '0%';
@@ -752,7 +687,7 @@ function resetDownloadProgress() {
 async function startDownloadJob(videoInfo, filename, quality) {
     setDownloadingState(true);
     clearError();
-    updateJobProgress('queued', 0, translations[appState.currentLang]['download-queued']);
+    updateJobProgress('queued', 0, t('download-queued'));
 
     try {
         const createResponse = await fetch('/download-jobs', {
@@ -774,7 +709,7 @@ async function startDownloadJob(videoInfo, filename, quality) {
         const startedAt = Date.now();
         while (appState.isDownloading && appState.downloadJobId === created.job_id) {
             if (Date.now() - startedAt > 20 * 60 * 1000) {
-                throw new Error(translations[appState.currentLang]['download-timeout']);
+                throw new Error(t('download-timeout'));
             }
 
             await sleep(1000);
@@ -787,8 +722,7 @@ async function startDownloadJob(videoInfo, filename, quality) {
 
             updateJobProgress(job.status, job.progress, job.message, job.progress_known !== false);
             if (job.status === 'ready' && job.download_url) {
-                // 进度满后自动触发浏览器保存
-                updateJobProgress('ready', 100, translations[appState.currentLang]['download-ready'], true);
+                updateJobProgress('ready', 100, t('download-ready'), true);
                 const link = document.createElement('a');
                 link.href = job.download_url;
                 link.download = filename;
@@ -798,7 +732,7 @@ async function startDownloadJob(videoInfo, filename, quality) {
 
                 appState.downloadJobId = null;
                 setDownloadingState(false);
-                showEnvAlert(translations[appState.currentLang]['download-started'], 'success');
+                showEnvAlert(t('download-started'), 'success');
                 setTimeout(() => {
                     hideEnvAlert();
                     resetDownloadProgress();
@@ -810,7 +744,7 @@ async function startDownloadJob(videoInfo, filename, quality) {
         appState.downloadJobId = null;
         setDownloadingState(false);
         resetDownloadProgress();
-        showError(error instanceof Error ? error.message : translations[appState.currentLang]['unknown-error']);
+        showError(error instanceof Error ? error.message : t('unknown-error'));
     }
 }
 
@@ -820,7 +754,7 @@ function startBrowserDownload(proxyUrl, filename, needsServerPrepare, options = 
 
     if (needsServerPrepare) {
         startDownloadTimer();
-        showEnvAlert(translations[appState.currentLang]['download-merging'], 'success');
+        showEnvAlert(t('download-merging'), 'success');
     }
 
     const link = document.createElement('a');
@@ -828,7 +762,6 @@ function startBrowserDownload(proxyUrl, filename, needsServerPrepare, options = 
     link.download = filename;
     if (options.referrerPolicy) {
         link.referrerPolicy = options.referrerPolicy;
-        // 兼容不支持 referrerPolicy 属性的环境，避免带上本站 Referer 被 CDN 拒绝
         if (options.referrerPolicy === 'no-referrer') {
             link.rel = 'noreferrer';
         }
@@ -838,7 +771,7 @@ function startBrowserDownload(proxyUrl, filename, needsServerPrepare, options = 
     document.body.removeChild(link);
 
     if (!needsServerPrepare) {
-        showEnvAlert(translations[appState.currentLang]['download-started'], 'success');
+        showEnvAlert(t('download-started'), 'success');
     }
 
     setTimeout(() => {
@@ -851,32 +784,25 @@ function startBrowserDownload(proxyUrl, filename, needsServerPrepare, options = 
 function setDownloadingState(downloading) {
     appState.isDownloading = downloading;
     const btn = elements.downloadBtn;
-    const btnTextEl = btn.querySelector('span');
-
     if (downloading) {
         btn.disabled = true;
         btn.classList.add('downloading');
     } else {
         btn.disabled = false;
         btn.classList.remove('downloading');
-        if (btnTextEl) {
-            btnTextEl.textContent = translations[appState.currentLang]['download-btn'];
-        }
+        updateDownloadLabel();
     }
 }
 
 function startDownloadTimer() {
     appState.downloadSeconds = 0;
-    updateDownloadBtnText(translations[appState.currentLang]['download-processing'], '0s');
+    updateDownloadBtnText(t('download-processing'), '0s');
     if (appState.downloadTimer) {
         clearInterval(appState.downloadTimer);
     }
     appState.downloadTimer = setInterval(() => {
         appState.downloadSeconds += 1;
-        updateDownloadBtnText(
-            translations[appState.currentLang]['download-processing'],
-            `${appState.downloadSeconds}s`
-        );
+        updateDownloadBtnText(t('download-processing'), `${appState.downloadSeconds}s`);
     }, 1000);
 }
 
@@ -894,38 +820,67 @@ function updateDownloadBtnText(label, detail) {
     }
 }
 
-// 检查侧边通知是否应该显示
-function checkSideNotification() {
-    // 如果是移动端，不显示侧边栏
-    if (window.innerWidth <= 1024) return;
+function initMacShots() {
+    const root = document.getElementById('mac-shots');
+    if (!root) return;
+    const track = root.querySelector('.shot-track');
+    const slides = Array.from(root.querySelectorAll('.shot'));
+    const dots = Array.from(root.querySelectorAll('#shot-dots button'));
+    const prev = document.getElementById('shot-prev');
+    const next = document.getElementById('shot-next');
+    let index = 0;
+    let startX = null;
 
-    const sideNotification = document.getElementById('side-notification');
-    if (!sideNotification) return;
-
-    // 检查 localStorage 中是否已经设置了关闭标记（版本号变更时重新显示）
-    const notificationVersion = 'v2';  // 更新内容时修改此版本号
-    const isClosed = localStorage.getItem('side-notification-closed') === notificationVersion;
-
-    if (!isClosed) {
-        sideNotification.style.display = 'flex';
+    function go(n) {
+        index = (n + slides.length) % slides.length;
+        track.style.transform = `translateX(${-index * 100}%)`;
+        dots.forEach((dot, i) => dot.classList.toggle('on', i === index));
     }
+
+    if (prev) prev.addEventListener('click', () => go(index - 1));
+    if (next) next.addEventListener('click', () => go(index + 1));
+    dots.forEach((dot, i) => dot.addEventListener('click', () => go(i)));
+    root.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft') go(index - 1);
+        if (e.key === 'ArrowRight') go(index + 1);
+    });
+    root.tabIndex = 0;
+    root.addEventListener('pointerdown', (e) => { startX = e.clientX; });
+    root.addEventListener('pointerup', (e) => {
+        if (startX == null) return;
+        const dx = e.clientX - startX;
+        startX = null;
+        if (Math.abs(dx) < 40) return;
+        go(dx < 0 ? index + 1 : index - 1);
+    });
 }
 
-// 处理关闭侧边通知
-function handleCloseSideNotification() {
-    const sideNotification = document.getElementById('side-notification');
-    if (!sideNotification) return;
-
-    // 添加退出动画类
-    sideNotification.classList.add('hiding');
-
-    // 动画结束后隐藏元素
-    setTimeout(() => {
-        sideNotification.style.display = 'none';
-        sideNotification.classList.remove('hiding');
-
-        // 在 localStorage 中标记已关闭（保存版本号）
-        const notificationVersion = 'v2';  // 与 checkSideNotification 中保持一致
-        localStorage.setItem('side-notification-closed', notificationVersion);
-    }, 500); // 与 CSS animation 时间一致
+function observeReveal() {
+    const io = new IntersectionObserver(entries => entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            entry.target.classList.add('in');
+            io.unobserve(entry.target);
+        }
+    }), { threshold: 0.1, rootMargin: '0px 0px -6% 0px' });
+    document.querySelectorAll('.rv').forEach((el, i) => {
+        el.style.transitionDelay = `${(i % 4) * 70}ms`;
+        io.observe(el);
+    });
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    cacheElements();
+    const savedTheme = localStorage.getItem('videox-theme');
+    if (savedTheme === 'light' || savedTheme === 'dark') {
+        applyTheme(savedTheme);
+    }
+    translate(preferredLang());
+    if (detectNonMac() && elements.dlcard) {
+        elements.dlcard.classList.add('notmac');
+    }
+    checkEnvironment();
+    bindEvents();
+    initMacShots();
+    observeReveal();
+    handleInput();
+});

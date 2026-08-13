@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>隐私政策 · VideoX</title>
+  <style>
+    /* 与登录页同一套语言：macOS 系统蓝、苹果灰阶、纯白底、内容靠上。
+       文档页按阅读优化：左对齐、行宽约 680px、正文 15px。字号下限 12px。 */
+    :root {
+      color-scheme: light;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC",
+        "Helvetica Neue", "Segoe UI", sans-serif;
+      color: #1d1d1f;
+      background: #fff;
+      -webkit-font-smoothing: antialiased;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      justify-items: center;
+      align-content: start;
+      padding: clamp(44px, 9vh, 96px) 20px 64px;
+      background: #fff;
+    }
+    .shell { width: min(100%, 680px); }
+    .card { padding: 0; border: 0; background: none; }
+    .header { display: flex; align-items: center; gap: 13px; margin-bottom: 22px; }
+    .mark {
+      width: 44px; height: 44px; flex: 0 0 auto;
+      display: grid; place-items: center;
+      border-radius: 12px;
+      border: 1.5px solid #007aff;
+      color: #007aff;
+    }
+    .product { margin: 0 0 3px; color: #86868b; font-size: 13px; }
+    h1 { margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -.03em; line-height: 1.2; }
+    .meta {
+      color: #86868b; font-size: 13px; margin: 0 0 32px;
+      padding-bottom: 20px; border-bottom: 1px solid #ebebed;
+    }
+    h2 { font-size: 17px; font-weight: 600; margin: 34px 0 10px; letter-spacing: -.01em; }
+    p, li { font-size: 15px; line-height: 1.75; color: #424245; }
+    p { margin: 10px 0; }
+    ul { padding-left: 22px; margin: 10px 0; }
+    li { margin: 5px 0; }
+    strong { color: #1d1d1f; font-weight: 600; }
+    a { color: #007aff; text-decoration: underline; text-underline-offset: 2px; }
+    a:hover { color: #0071e3; }
+    .scope {
+      margin: 0 0 8px; padding: 14px 16px;
+      border-radius: 10px; background: #f5f5f7;
+      font-size: 14px; line-height: 1.7; color: #424245;
+    }
+    .foot {
+      margin-top: 44px; padding-top: 18px;
+      border-top: 1px solid #ebebed;
+      color: #86868b; font-size: 13px;
+    }
+    @media (max-width: 460px) {
+      h1 { font-size: 22px; }
+      p, li { font-size: 14.5px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="card">
+      <header class="header">
+        <div class="mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 4v11"></path>
+            <path d="M7.5 11.5 12 16l4.5-4.5"></path>
+            <path d="M5 19h14"></path>
+          </svg>
+        </div>
+        <div>
+          <p class="product">Aisoup 账户 · VideoX</p>
+          <h1>隐私政策</h1>
+        </div>
+      </header>
+      <p class="meta">生效日期：2026 年 8 月 12 日 · 运营者：VideoX</p>
+
+      <div class="scope">
+        本政策适用于 VideoX Mac 应用及其登录页（vd.aisoup.ai/auth/native）。本域名下的其他在线服务不适用本政策。<br>
+        VideoX 目前处于<strong>免费公测阶段</strong>，功能与服务范围可能调整；本政策会随之更新并在本页公布。
+      </div>
+
+      <h2>一、我们收集哪些信息</h2>
+      <ul>
+        <li><strong>账户信息</strong>：你的邮箱地址；使用 Google 登录时，Google 提供的账户标识。</li>
+        <li><strong>设备信息</strong>：Mac 的设备名称、一个随机生成的设备标识，以及 App 版本号，用于执行「每个账户 1 台 Mac」的设备限额和兼容性排查。</li>
+        <li><strong>下载统计</strong>：每次下载所属的平台（如 YouTube、B站、抖音）、点击时间和是否成功的时间，以随机任务编号关联到你的账户。</li>
+        <li><strong>服务日志</strong>：App 与服务器通信时，服务器会按云服务的通用做法自动记录访问 IP、时间和接口名称，用于安全防护与故障排查。</li>
+        <li><strong>你主动发送的反馈</strong>：仅当你在 App 内点击发送反馈时，我们才会收到你填写的内容、联系邮箱，以及 App 版本、macOS 版本、Mac 机型和运行组件版本（用于复现问题）。未登录时提交的反馈，会另存一段由你的 IP 地址加密计算出的指纹用于限制刷量，<strong>不保存 IP 原文</strong>。</li>
+      </ul>
+
+      <h2>二、我们不收集哪些信息</h2>
+      <p>媒体解析与下载在你的 Mac 本机完成。我们<strong>不会主动收集或上传</strong>：视频链接、视频标题、媒体文件内容、本地文件路径，以及浏览器 Cookie。</p>
+      <p><strong>唯一的例外是你自己选择附上的链接。</strong>当某条任务下载失败、你在反馈页勾选「附上这条链接和失败原因」时，该条链接会随这次反馈一起发送，仅用于复现和排查该问题。这个勾选<strong>随时可以取消</strong>；取消后链接不会离开你的 Mac。除此之外，任何情况下我们都不会收到你的链接。</p>
+
+      <h2>三、信息用来做什么</h2>
+      <ul>
+        <li>完成登录、验证码发送与账户安全保护；</li>
+        <li>执行设备数量限额；</li>
+        <li>保障服务安全、排查故障；</li>
+        <li>了解各平台的整体使用情况，用于改进产品；</li>
+        <li>回复你的反馈，并复现与修复你报告的问题。</li>
+      </ul>
+
+      <h2>四、保存多久</h2>
+      <p>账户与设备信息随账户保存；下载统计最多保存 <strong>12 个月</strong>；服务日志最多保存 <strong>30 天</strong>；反馈内容最多保存 <strong>12 个月</strong>。执行「删除云端数据」后，与你账户关联的信息即时全部删除，<strong>包括你提交过的反馈及其中附上的链接</strong>。</p>
+
+      <h2>五、信息存在哪里、谁会经手</h2>
+      <p>数据存储在<strong>境外云服务器</strong>。为提供服务，以下第三方会经手部分信息：</p>
+      <ul>
+        <li><strong>Supabase</strong>：账户托管、数据存储，以及通过其邮件通道发送登录验证码；</li>
+        <li><strong>Google</strong>：仅当你选择 Google 登录时，用于验证你的身份。</li>
+      </ul>
+      <p>我们不会将上述信息用于广告，也不会向其他第三方出售或共享。</p>
+
+      <h2>六、你的权利</h2>
+      <ul>
+        <li>在 App「账号」页可随时<strong>退出登录</strong>（释放设备名额）；</li>
+        <li>在 App「账号」页可<strong>删除云端数据</strong>（删除设备授权、权益记录、全部下载统计与你提交过的反馈，本机需要重新登录后才能继续使用）。因违规或异常使用被停用的账户，为防止滥用，App 内删除通道暂停，请通过下方邮箱联系处理；</li>
+        <li>任何疑问或请求，发邮件至 <a href="mailto:vtwskk@gmail.com">vtwskk@gmail.com</a>，我们会在合理时间内处理。</li>
+      </ul>
+
+      <h2>七、未成年人</h2>
+      <p>本产品面向成年用户。如你未满 18 周岁，请在监护人同意和指导下使用。</p>
+
+      <h2>八、政策变更</h2>
+      <p>政策更新会发布在本页面并更新生效日期；重大变更会在登录页或 App 内提示。</p>
+
+      <p class="foot">VideoX · 联系方式：vtwskk@gmail.com · <a href="/terms">服务条款</a></p>
+    </section>
+  </main>
+</body>
+</html>

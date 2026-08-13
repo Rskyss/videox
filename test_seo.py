@@ -31,6 +31,61 @@ class SEOTestCase(unittest.TestCase):
         self.assertIn('https://vd.aisoup.ai/sitemap.xml', body)
         self.assertNotIn('aifun.store', body)
 
+    def test_robots_blocks_api_in_every_group(self):
+        # 特定 User-agent 分组会完全覆盖通用组,每组都必须重复 API 屏蔽规则
+        body = self.client.get('/robots.txt').get_data(as_text=True)
+        groups = [g for g in body.split('User-agent:')[1:] if g.strip()]
+        self.assertGreaterEqual(len(groups), 3)
+        for group in groups:
+            self.assertIn('Disallow: /download-jobs', group)
+            self.assertIn('Disallow: /parse-video', group)
+
+    def test_llms_txt_accessible(self):
+        resp = self.client.get('/llms.txt')
+        self.assertEqual(resp.status_code, 200)
+        body = resp.get_data(as_text=True)
+        self.assertIn('VideoX', body)
+        self.assertIn('VideoX for Mac', body)
+        self.assertIn('vd.aisoup.ai', body)
+
+    def test_sitemap_lastmod_fresh(self):
+        body = self.client.get('/sitemap.xml').get_data(as_text=True)
+        self.assertIn('<lastmod>2026-08-13</lastmod>', body)
+
+    def test_share_card_uses_real_image(self):
+        html = self.client.get('/').get_data(as_text=True)
+        self.assertIn('og:image" content="https://vd.aisoup.ai/static/mac-screenshot.png"', html)
+        self.assertNotIn('og:image" content="https://vd.aisoup.ai/static/favicon.png"', html)
+
+    def test_mac_app_structured_data_valid(self):
+        html = self.client.get('/').get_data(as_text=True)
+        blocks = re.findall(
+            r'<script type="application/ld\+json">(.*?)</script>', html, re.S)
+        app_schema = None
+        for block in blocks:
+            data = json.loads(block)
+            if data.get('@type') == 'SoftwareApplication':
+                app_schema = data
+                break
+        self.assertIsNotNone(app_schema, '缺少 Mac 客户端的 SoftwareApplication 结构化数据')
+        self.assertEqual(app_schema.get('name'), 'VideoX for Mac')
+        self.assertIn('macOS', app_schema.get('operatingSystem', ''))
+        self.assertIn('myqcloud.com', app_schema.get('downloadUrl', ''))
+        self.assertEqual(app_schema.get('offers', {}).get('price'), '0')
+
+    def test_faq_structured_data_matches_page_language(self):
+        # FAQ 标注必须与页面默认中文一致,语言不一致会降低搜索引擎采信
+        html = self.client.get('/').get_data(as_text=True)
+        blocks = re.findall(
+            r'<script type="application/ld\+json">(.*?)</script>', html, re.S)
+        for block in blocks:
+            data = json.loads(block)
+            if data.get('@type') == 'FAQPage':
+                first_q = data['mainEntity'][0]['name']
+                self.assertIn('网页版', first_q)
+                return
+        self.fail('缺少 FAQPage 结构化数据')
+
     def test_sitemap_accessible(self):
         resp = self.client.get('/sitemap.xml')
         self.assertEqual(resp.status_code, 200)

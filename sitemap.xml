@@ -4,16 +4,16 @@
         xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
     <loc>https://vd.aisoup.ai/</loc>
-    <lastmod>2026-07-26</lastmod>
+    <lastmod>2026-08-13</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://vd.aisoup.ai/?lang=zh"/>
     <xhtml:link rel="alternate" hreflang="en" href="https://vd.aisoup.ai/?lang=en"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://vd.aisoup.ai/"/>
     <image:image>
-      <image:loc>https://vd.aisoup.ai/static/favicon.png</image:loc>
-      <image:title>VideoX AI视频解析工具</image:title>
-      <image:caption>AI智能视频下载工具，支持多平台</image:caption>
+      <image:loc>https://vd.aisoup.ai/static/mac-screenshot.png</image:loc>
+      <image:title>VideoX – 免费在线视频下载器与 Mac 客户端</image:title>
+      <image:caption>支持 YouTube、B站、抖音、小红书、TikTok、Twitter/X 的免费视频下载工具，Mac 客户端本机下载</image:caption>
     </image:image>
   </url>
 </urlset>

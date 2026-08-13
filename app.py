@@ -1545,6 +1545,11 @@ def sitemap():
     """提供sitemap.xml文件供搜索引擎索引"""
     return send_from_directory(BASE_DIR, 'sitemap.xml', mimetype='application/xml')
 
+@app.route('/llms.txt')
+def llms_txt():
+    """提供llms.txt供AI引擎了解产品(GEO)"""
+    return send_from_directory(BASE_DIR, 'llms.txt', mimetype='text/plain')
+
 @app.route('/googlebb599f357f33fc9d.html')
 def google_verification():
     """Google Search Console 站点归属验证文件"""

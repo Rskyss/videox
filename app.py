@@ -1552,11 +1552,12 @@ def google_verification():
                     mimetype='text/html')
 
 if __name__ == '__main__':
-    # 生产环境运行
+    # 本机默认 5009；线上由 start_backend.sh 固定为 5001，与 nginx 一致
+    port = int(os.environ.get('PORT', '5009'))
     app.run(
         debug=False,  # 生产环境必须关闭debug
         host='0.0.0.0',  # 监听所有网络接口
-        port=5009,
+        port=port,
         threaded=True,   # 启用多线程
         use_reloader=False  # 生产环境关闭自动重载
     )

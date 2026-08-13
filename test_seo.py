@@ -98,7 +98,7 @@ class SEOTestCase(unittest.TestCase):
     def test_homepage_promotes_mac_client(self):
         html = self.client.get('/').get_data(as_text=True)
         self.assertIn('VideoX for Mac', html)
-        self.assertIn('/dl/VideoX_0.2.0.dmg', html)
+        self.assertIn('https://videox-1304948377.cos.ap-guangzhou.myqcloud.com/VideoX_0.2.0.dmg', html)
         self.assertIn('brand-mark.png', html)
         self.assertIn('mac-screenshot.png', html)
         self.assertIn('mac-screenshot-tasks.png', html)

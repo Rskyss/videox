@@ -8,4 +8,6 @@ if [ -f .env ]; then
     source .env
     set +a
 fi
+# 官网入口走 5001，不能被本机端口或 .env 误改掉
+export PORT=5001
 python3 app.py

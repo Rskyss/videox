@@ -87,6 +87,23 @@ class SEOTestCase(unittest.TestCase):
             self.assertTrue(item.get('name'))
             self.assertTrue(item.get('acceptedAnswer', {}).get('text'))
 
+    def test_terms_and_privacy_pages_accessible(self):
+        terms = self.client.get('/terms')
+        privacy = self.client.get('/privacy')
+        self.assertEqual(terms.status_code, 200)
+        self.assertEqual(privacy.status_code, 200)
+        self.assertIn('服务条款', terms.get_data(as_text=True))
+        self.assertIn('隐私政策', privacy.get_data(as_text=True))
+
+    def test_homepage_promotes_mac_client(self):
+        html = self.client.get('/').get_data(as_text=True)
+        self.assertIn('VideoX for Mac', html)
+        self.assertIn('https://videox-1304948377.cos.ap-guangzhou.myqcloud.com/VideoX_0.2.0.dmg', html)
+        self.assertIn('brand-mark.png', html)
+        self.assertIn('mac-screenshot.png', html)
+        self.assertIn('mac-screenshot-tasks.png', html)
+        self.assertIn('id="mac-shots"', html)
+
     def test_faq_translations_complete(self):
         with open('static/script.js', encoding='utf-8') as f:
             script = f.read()

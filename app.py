@@ -41,10 +41,20 @@ DOWNLOAD_JOB_TTL_SECONDS = 60 * 60
 DOWNLOAD_JOB_TIMEOUT_SECONDS = 15 * 60
 DOWNLOAD_JOB_MAX_CONCURRENT = 2
 DOWNLOAD_JOB_MAX_PENDING = 12
+DIRECT_DOWNLOAD_CHUNK_SIZE = 1024 * 512
+DIRECT_DOWNLOAD_RECONNECT_ATTEMPTS = 4
+DIRECT_DOWNLOAD_LOW_SPEED_WINDOW_SECONDS = 8
+DIRECT_DOWNLOAD_LOW_SPEED_BYTES_PER_SECOND = 192 * 1024
 YOUTUBE_QUALITY_SELECTORS = {
     '360': '18/b[height<=360][ext=mp4]/bv[height<=360][vcodec^=avc1]+ba[ext=m4a]/bv[height<=360]+ba/b[height<=360]',
     '720': 'bv[height<=720][vcodec^=avc1]+ba[ext=m4a]/bv[height<=720]+ba/b[height<=720]',
     '1080': 'bv[height<=1080][vcodec^=avc1]+ba[ext=m4a]/bv[height<=1080]+ba/b[height<=1080]',
+}
+# B站按高度封顶；不强制 AVC，便于选到更小的 HEVC 档
+BILIBILI_QUALITY_SELECTORS = {
+    '360': 'bv*[height<=360]+ba/b[height<=360]/bv*+ba/b',
+    '720': 'bv*[height<=720]+ba/b[height<=720]/bv*+ba/b',
+    '1080': 'bv*[height<=1080]+ba/b[height<=1080]/bv*+ba/b',
 }
 SUPPORTED_DOWNLOAD_PLATFORMS = {
     'douyin', 'bilibili', 'xiaohongshu', 'youtube', 'tiktok', 'twitter',
@@ -160,6 +170,17 @@ def _download_job_cleanup_loop() -> None:
         _cleanup_expired_download_jobs()
 
 
+# 分片/连接中途被平台掐断（如 B站常见的 SSL EOF）时的抗断线参数：
+# 提高重试次数并加上退避等待，给瞬时网络问题留出恢复时间。
+RESILIENT_RETRY_ARGS = [
+    '--retries', '10',
+    '--fragment-retries', '15',
+    '--retry-sleep', 'linear=1:10:2',
+    '--retry-sleep', 'fragment:linear=1:10:2',
+    '--socket-timeout', '30',
+]
+
+
 def _youtube_download_command(
     url: str,
     output_base: str,
@@ -175,9 +196,7 @@ def _youtube_download_command(
         '--newline',
         '--progress',
         '--concurrent-fragments', '4',
-        '--retries', '3',
-        '--fragment-retries', '3',
-        '--socket-timeout', '30',
+        *RESILIENT_RETRY_ARGS,
         '-f', YOUTUBE_QUALITY_SELECTORS[quality],
         '-o', f'{output_base}.%(ext)s',
         '--merge-output-format', 'mp4',
@@ -204,6 +223,9 @@ def _platform_download_command(job, output_base: str, proxy=None, client=None):
             client or 'web_safari',
         )
 
+    # B站 CDN 对多连接更敏感，并发分片容易在音频流阶段触发 SSL 中断；降到 1 更稳。
+    # 部分网络环境下 IPv6 握手会长时间卡住，进度一直停在 0%，强制 IPv4。
+    concurrent_fragments = '1' if platform == 'bilibili' else '4'
     cmd = [
         YTDLP_CMD,
         source_url,
@@ -211,14 +233,18 @@ def _platform_download_command(job, output_base: str, proxy=None, client=None):
         '--no-update',
         '--newline',
         '--progress',
-        '--concurrent-fragments', '4',
-        '--retries', '3',
-        '--fragment-retries', '3',
-        '--socket-timeout', '30',
-        '-f', 'bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/bv*+ba/b',
+        '--concurrent-fragments', concurrent_fragments,
+        *RESILIENT_RETRY_ARGS,
+        '-f', (
+            BILIBILI_QUALITY_SELECTORS.get(quality, BILIBILI_QUALITY_SELECTORS['720'])
+            if platform == 'bilibili'
+            else 'bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/bv*+ba/b'
+        ),
         '-o', f'{output_base}.%(ext)s',
         '--merge-output-format', 'mp4',
     ]
+    if platform == 'bilibili':
+        cmd.append('--force-ipv4')
     cmd.extend(downloader._platform_specific_args(source_url))
     if platform == 'twitter':
         cmd.extend(['--extractor-args', 'twitter:multiple_video=1'])
@@ -343,7 +369,9 @@ def _run_download_job(job_id: str) -> None:
             )
             app.logger.warning('直链下载失败，回退 yt-dlp: %s', sanitize_sensitive_output(str(exc)))
 
-        routes = [(None, None)]
+        # 非 YouTube 平台此前只有一次机会：一旦这次遇到瞬时网络问题（如 B站常见的
+        # SSL EOF 中断），整个任务直接判定失败。这里给普通平台也留几次完整重试。
+        routes = [(None, None)] * 3
         if job['platform'] == 'youtube':
             routes = []
             for proxy in downloader.proxy_manager.get_proxies()[:3]:
@@ -375,15 +403,25 @@ def _run_download_job(job_id: str) -> None:
             expected_streams = 1
             completed_streams = 0
             previous_stream_percent = 0.0
+            current_progress = 0
 
             try:
+                process_env = ytdlp_subprocess_env()
+                # B站走国内 CDN，继承本机系统代理（Clash 等）反而容易在音频流阶段 SSL 断开。
+                # YouTube 有单独的显式代理线路，不受这里影响。
+                if job['platform'] == 'bilibili':
+                    for key in (
+                        'http_proxy', 'https_proxy', 'HTTP_PROXY', 'HTTPS_PROXY',
+                        'all_proxy', 'ALL_PROXY',
+                    ):
+                        process_env.pop(key, None)
                 process = subprocess.Popen(
                     cmd,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     text=True,
                     bufsize=1,
-                    env=ytdlp_subprocess_env(),
+                    env=process_env,
                 )
                 for raw_line in iter(process.stdout.readline, ''):
                     line = sanitize_sensitive_output(raw_line.strip())
@@ -396,23 +434,50 @@ def _run_download_job(job_id: str) -> None:
                     if format_match:
                         expected_streams = 2 if '+' in format_match.group(1) else 1
 
+                    retry_match = re.search(r'Retrying\s*\((\d+)/(\d+)\)', line, re.IGNORECASE)
+                    if retry_match or (
+                        'got error' in line.lower() and 'ssl' in line.lower()
+                    ):
+                        retry_label = (
+                            f'{retry_match.group(1)}/{retry_match.group(2)}'
+                            if retry_match else ''
+                        )
+                        stage = '音频' if completed_streams >= 1 or (
+                            expected_streams > 1 and previous_stream_percent >= 99
+                        ) else '视频'
+                        _set_download_job(
+                            job_id,
+                            status='downloading',
+                            progress_known=current_progress > 0,
+                            message=(
+                                f'网络不稳，正在重试{stage}下载'
+                                + (f'（{retry_label}）' if retry_label else '')
+                            ),
+                        )
+                        continue
+
                     percent_match = re.search(r'\[download\]\s+([0-9.]+)%', line)
                     if percent_match:
                         stream_percent = float(percent_match.group(1))
                         if previous_stream_percent >= 99 and stream_percent < previous_stream_percent:
                             completed_streams = min(expected_streams - 1, completed_streams + 1)
                         overall_fraction = (completed_streams + stream_percent / 100) / expected_streams
-                        progress = min(95, max(0, int(overall_fraction * 95)))
+                        current_progress = min(95, max(0, int(overall_fraction * 95)))
                         previous_stream_percent = stream_percent
+                        if job['platform'] == 'youtube':
+                            progress_message = f'正在下载 {quality}p 音视频'
+                        elif expected_streams > 1 and completed_streams >= 1:
+                            progress_message = '正在下载音频'
+                        elif expected_streams > 1:
+                            progress_message = '正在下载视频画面'
+                        else:
+                            progress_message = '正在下载视频'
                         _set_download_job(
                             job_id,
                             status='downloading',
-                            progress=progress,
-                            message=(
-                                f'正在下载 {quality}p 音视频'
-                                if job['platform'] == 'youtube'
-                                else '正在下载视频'
-                            ),
+                            progress=current_progress,
+                            progress_known=True,
+                            message=progress_message,
                         )
                     elif '[Merger]' in line or '[VideoRemuxer]' in line or '[Fixup' in line:
                         _set_download_job(job_id, status='merging', progress=99, message='正在合并音视频')
@@ -448,12 +513,14 @@ def _run_download_job(job_id: str) -> None:
                     return
                 output_tail.append('Downloaded file does not exist')
 
-            last_error = '\n'.join(output_tail[-8:]) or 'Download failed'
+            last_error = _download_failure_summary(output_tail) or 'Download failed'
             retryable = any(token in last_error.lower() for token in (
                 'bot', 'sign in', 'challenge', 'proxy', 'timeout', 'timed out',
                 'connection', 'network', 'http error 403', 'http error 429',
                 'requested format is not available', 'only images are available',
                 'no video formats found',
+                # B站等平台常见的连接中途被掐断，属于可重试的瞬时网络问题
+                'ssl', 'eof', 'reset by peer', 'broken pipe',
             ))
             if attempt < len(routes) and retryable:
                 continue
@@ -463,8 +530,28 @@ def _run_download_job(job_id: str) -> None:
             job_id,
             status='error',
             message='下载失败',
-            error=sanitize_sensitive_output(last_error)[-800:],
+            error=downloader._parse_error(last_error),
         )
+
+
+def _download_failure_summary(output_tail) -> str:
+    """从 yt-dlp 输出尾部提取真正的失败原因，避免把进度百分比当成错误。"""
+    lines = [line for line in (output_tail or []) if line]
+    if not lines:
+        return ''
+    error_lines = [
+        line for line in lines
+        if line.startswith('ERROR:') or 'Giving up after' in line or 'Got error:' in line
+    ]
+    if error_lines:
+        return '\n'.join(error_lines[-6:])
+    # 没有明确 ERROR 时，丢掉纯进度行再取尾部
+    meaningful = [
+        line for line in lines
+        if not re.search(r'\[download\]\s+[0-9.]+%', line)
+        and 'ETA' not in line
+    ]
+    return '\n'.join((meaningful or lines)[-8:])
 
 
 def _run_youtube_download_job(job_id: str) -> None:
@@ -537,6 +624,20 @@ def detect_platform(url):
 def index():
     """首页"""
     return render_template('index.html')
+
+
+@app.route('/terms')
+@app.route('/terms/')
+def terms():
+    """用户协议（与客户端官网同一份文案）"""
+    return render_template('terms.html')
+
+
+@app.route('/privacy')
+@app.route('/privacy/')
+def privacy():
+    """隐私政策（与客户端官网同一份文案）"""
+    return render_template('privacy.html')
 
 
 @app.route('/check-env', methods=['GET'])
@@ -839,6 +940,7 @@ def proxy_download():
         video_url: 视频直链URL (需要URL编码)
         filename: 文件名
         is_dash: 是否为DASH格式 (可选，默认false)
+        quality: 清晰度 360/720/1080（YouTube / B站可选）
     
     Returns:
         视频文件流
@@ -846,6 +948,7 @@ def proxy_download():
     video_url = request.args.get('video_url', '').strip()
     filename = request.args.get('filename', 'video.mp4').strip()
     is_dash = request.args.get('is_dash', 'false').lower() == 'true'
+    quality = request.args.get('quality', '720').strip() or '720'
     
     if not video_url:
         return jsonify({
@@ -859,7 +962,7 @@ def proxy_download():
         
         # 对于DASH格式，使用yt-dlp下载并合并
         if is_dash:
-            return download_with_ytdlp(video_url, filename)
+            return download_with_ytdlp(video_url, filename, quality=quality)
         
         # 非DASH格式，直接代理下载
         return proxy_direct_download(video_url, filename)
@@ -879,7 +982,7 @@ def create_download_job():
     data = request.get_json(silent=True) or {}
     source_url = (data.get('url') or '').strip()
     platform = _normalize_download_platform(source_url, str(data.get('platform') or ''))
-    quality = str(data.get('quality') or ('720' if platform == 'youtube' else 'best'))
+    quality = str(data.get('quality') or ('720' if platform in ('youtube', 'bilibili') else 'best'))
     filename = _safe_job_filename(data.get('filename') or 'video.mp4')
     is_dash = bool(data.get('is_dash'))
     try:
@@ -896,13 +999,13 @@ def create_download_job():
             'message': '不支持的下载链接',
             'error': source_error or 'Unsupported platform',
         }), 400
-    if platform == 'youtube' and quality not in YOUTUBE_QUALITY_SELECTORS:
+    if platform in ('youtube', 'bilibili') and quality not in YOUTUBE_QUALITY_SELECTORS:
         return jsonify({
             'success': False,
             'message': '不支持的清晰度',
             'error': 'quality must be one of: 360, 720, 1080',
         }), 400
-    if platform != 'youtube':
+    if platform not in ('youtube', 'bilibili'):
         quality = 'best'
 
     # DASH/HLS 必须交给 yt-dlp 合并；普通媒体直链则可按字节精确计进度。
@@ -1054,6 +1157,15 @@ def proxy_direct_download(video_url: str, filename: str):
             'Accept': '*/*',
             'Accept-Language': 'en-US,en;q=0.9',
         }
+
+        hostname = urlparse(video_url).hostname or ''
+        if _host_matches_domains(hostname, PLATFORM_MEDIA_DOMAINS['douyin']):
+            return _resumable_douyin_download(
+                video_url,
+                filename,
+                headers,
+                cookies_dict or None,
+            )
         
         # 发起流式请求（TikTok需要cookies）
         resp = requests.get(
@@ -1072,12 +1184,14 @@ def proxy_direct_download(video_url: str, filename: str):
         def generate():
             """流式传输视频数据"""
             try:
-                for chunk in resp.iter_content(chunk_size=1024 * 512):  # 512KB chunks
+                for chunk in resp.iter_content(chunk_size=DIRECT_DOWNLOAD_CHUNK_SIZE):
                     if chunk:
                         yield chunk
             except Exception as e:
                 # CDN连接中断时捕获异常，防止Flask进程崩溃
                 app.logger.error(f"流式传输中断: {e}")
+            finally:
+                resp.close()
         
         # 对文件名进行URL编码（解决中文文件名问题）
         encoded_filename = quote(filename)
@@ -1106,7 +1220,162 @@ def proxy_direct_download(video_url: str, filename: str):
         }), 500
 
 
-def download_with_ytdlp(video_url: str, filename: str):
+def _content_range_total(response) -> int:
+    """从 206 响应中提取完整文件大小。"""
+    content_range = response.headers.get('Content-Range', '')
+    match = re.match(r'^bytes\s+\d+-\d+/(\d+)$', content_range, re.IGNORECASE)
+    if match:
+        return int(match.group(1))
+    try:
+        return int(response.headers.get('Content-Length') or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _open_douyin_range(
+    video_url: str,
+    headers,
+    cookies,
+    offset: int,
+    trust_env: bool,
+    validator: str = '',
+):
+    """打开抖音 Range 流；续传时拒绝返回整文件，避免拼接出重复内容。"""
+    session = requests.Session()
+    session.trust_env = trust_env
+    request_headers = dict(headers)
+    request_headers['Range'] = f'bytes={offset}-'
+    if offset > 0 and validator:
+        request_headers['If-Range'] = validator
+
+    response = None
+    try:
+        response = session.get(
+            video_url,
+            headers=request_headers,
+            cookies=cookies,
+            stream=True,
+            allow_redirects=True,
+            timeout=(15, 30),
+        )
+        response.raise_for_status()
+        if offset > 0 and response.status_code != 206:
+            raise requests.RequestException(
+                f'CDN did not honor Range resume at byte {offset}'
+            )
+        return session, response
+    except Exception:
+        if response is not None:
+            response.close()
+        session.close()
+        raise
+
+
+def _resumable_douyin_download(video_url: str, filename: str, headers, cookies):
+    """抖音流低速或中断时透明重连，并从已发送位置继续。"""
+    # 保持现有系统代理为首选；只有连接持续低速/中断时才切换直连，再交替重试。
+    route_modes = (True, False, True, False)[:DIRECT_DOWNLOAD_RECONNECT_ATTEMPTS]
+    route_index = 0
+    offset = 0
+    session, response = _open_douyin_range(
+        video_url,
+        headers,
+        cookies,
+        offset=0,
+        trust_env=route_modes[route_index],
+    )
+    total_size = _content_range_total(response)
+    supports_resume = response.status_code == 206 and total_size > 0
+    validator = response.headers.get('ETag') or response.headers.get('Last-Modified') or ''
+
+    def generate():
+        nonlocal route_index, offset, session, response
+        try:
+            while True:
+                route_started_at = time.monotonic()
+                route_bytes = 0
+                reconnect_reason = ''
+                try:
+                    for chunk in response.iter_content(
+                        chunk_size=DIRECT_DOWNLOAD_CHUNK_SIZE
+                    ):
+                        if not chunk:
+                            continue
+                        yield chunk
+                        offset += len(chunk)
+                        route_bytes += len(chunk)
+
+                        if total_size and offset >= total_size:
+                            return
+
+                        elapsed = time.monotonic() - route_started_at
+                        can_reconnect = (
+                            supports_resume
+                            and route_index + 1 < len(route_modes)
+                        )
+                        if (
+                            can_reconnect
+                            and elapsed >= DIRECT_DOWNLOAD_LOW_SPEED_WINDOW_SECONDS
+                            and route_bytes / max(elapsed, 0.001)
+                            < DIRECT_DOWNLOAD_LOW_SPEED_BYTES_PER_SECOND
+                        ):
+                            reconnect_reason = '持续低速'
+                            break
+                    else:
+                        if not total_size or offset >= total_size:
+                            return
+                        reconnect_reason = '连接提前结束'
+                except Exception as exc:
+                    reconnect_reason = sanitize_sensitive_output(str(exc))
+
+                response.close()
+                session.close()
+                if not supports_resume or route_index + 1 >= len(route_modes):
+                    raise requests.RequestException(
+                        reconnect_reason or 'Douyin stream ended before completion'
+                    )
+
+                route_index += 1
+                app.logger.warning(
+                    '抖音下载流重连: offset=%s route=%s reason=%s',
+                    offset,
+                    'system-proxy' if route_modes[route_index] else 'direct',
+                    reconnect_reason,
+                )
+                session, response = _open_douyin_range(
+                    video_url,
+                    headers,
+                    cookies,
+                    offset=offset,
+                    trust_env=route_modes[route_index],
+                    validator=validator,
+                )
+                resumed_total = _content_range_total(response)
+                if resumed_total and resumed_total != total_size:
+                    raise requests.RequestException(
+                        'CDN file size changed while resuming download'
+                    )
+        finally:
+            response.close()
+            session.close()
+
+    encoded_filename = quote(filename)
+    response_headers = {
+        'Content-Disposition': f"attachment; filename*=UTF-8''{encoded_filename}",
+        'Content-Type': 'video/mp4',
+        'Cache-Control': 'no-cache',
+    }
+    if total_size:
+        response_headers['Content-Length'] = str(total_size)
+
+    return Response(
+        stream_with_context(generate()),
+        mimetype='video/mp4',
+        headers=response_headers,
+    )
+
+
+def download_with_ytdlp(video_url: str, filename: str, quality: str = '720'):
     """使用yt-dlp下载（用于DASH/HLS格式，自动合并视频和音频）"""
     try:
         temp_dir = tempfile.gettempdir()
@@ -1120,6 +1389,8 @@ def download_with_ytdlp(video_url: str, filename: str):
         youtube_attempts = downloader.proxy_manager.get_proxies()[:3] + [None] if is_youtube else [None]
         max_retries = len(youtube_attempts)
         result = None
+        if quality not in YOUTUBE_QUALITY_SELECTORS:
+            quality = '720'
 
         for attempt in range(max_retries):
             cmd = [
@@ -1134,12 +1405,15 @@ def download_with_ytdlp(video_url: str, filename: str):
                 cmd.extend([
                     "--referer", "https://www.bilibili.com/",
                     "--add-header", "Origin:https://www.bilibili.com",
+                    '-f', BILIBILI_QUALITY_SELECTORS[quality],
                 ])
+                app.logger.info(f"使用 B站下载清晰度 quality={quality}")
 
             if is_youtube:
                 proxy = youtube_attempts[attempt]
+                cmd.extend(['-f', YOUTUBE_QUALITY_SELECTORS[quality]])
                 cmd.extend(downloader.youtube_args(proxy))
-                app.logger.info(f"[尝试 {attempt + 1}/{max_retries}] 使用YouTube下载线路")
+                app.logger.info(f"[尝试 {attempt + 1}/{max_retries}] 使用YouTube下载线路 quality={quality}")
 
             if is_twitter:
                 cmd.extend(["--extractor-args", "twitter:multiple_video=1"])
@@ -1278,11 +1552,12 @@ def google_verification():
                     mimetype='text/html')
 
 if __name__ == '__main__':
-    # 生产环境运行
+    # 本机默认 5009；线上由 start_backend.sh 固定为 5001，与 nginx 一致
+    port = int(os.environ.get('PORT', '5009'))
     app.run(
         debug=False,  # 生产环境必须关闭debug
         host='0.0.0.0',  # 监听所有网络接口
-        port=5001,  # 端口设置为5003
+        port=port,
         threaded=True,   # 启用多线程
         use_reloader=False  # 生产环境关闭自动重载
     )

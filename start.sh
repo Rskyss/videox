@@ -30,8 +30,8 @@ echo "[3/3] 正在启动 Web 服务..."
 echo ""
 echo "========================================"
 echo "应用启动成功！"
-echo "访问地址: http://127.0.0.1:5001"
-echo "或访问: http://localhost:5001"
+echo "访问地址: http://127.0.0.1:5009"
+echo "或访问: http://localhost:5009"
 echo "按 Ctrl+C 可停止服务"
 echo "========================================"
 echo ""
@@ -42,11 +42,11 @@ sleep 1
 # 根据操作系统打开浏览器
 if [[ "$OSTYPE" == "darwin"* ]]; then
     # macOS
-    open http://localhost:5001
+    open http://localhost:5009
 elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
     # Linux
     if command -v xdg-open &> /dev/null; then
-        xdg-open http://localhost:5001
+        xdg-open http://localhost:5009
     fi
 fi
 

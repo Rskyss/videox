@@ -315,6 +315,12 @@ class VideoDownloader:
             return 'YouTube 触发人机验证，请更新 cookies.txt 后重试'
         if 'ip address is blocked' in error_lower or 'your ip address is blocked' in error_lower:
             return '当前出口 IP 被该平台限制，请检查代理配置后重试'
+        ssl_drop_tokens = (
+            'ssl', 'eof occurred', 'unexpected_eof_while_reading',
+            'reset by peer', 'broken pipe', 'connection aborted',
+        )
+        if any(token in error_lower for token in ssl_drop_tokens):
+            return '下载中途网络连接不稳定，多次重试仍失败，请稍后重试或更换网络/代理'
         auth_patterns = [
             'login required',
             'please log in',
@@ -836,6 +842,7 @@ class VideoDownloader:
                     cmd.extend(self.youtube_args(proxy, client))
                 else:
                     cmd.extend(self._platform_specific_args(url))
+                    # 不加 -f 限制：拿到完整格式列表，才能按 360/720/1080 分别估算体积
                 if resolved_browser and not local_cookie:
                     cmd.extend(["--cookies-from-browser", resolved_browser])
                 if local_cookie:
@@ -929,22 +936,55 @@ class VideoDownloader:
             extractor = video_data.get('extractor_key', '')
             platform = self._get_platform_display_name(extractor)
             ext = video_data.get('ext', 'mp4')
+
+            quality_sizes = None
+            quality_sizes_readable = None
+            available_qualities = None
+            default_quality = None
+            quality_labels = None
+            if self._is_bilibili_url(url):
+                formats = video_data.get('formats', [])
+                quality_options = self._bilibili_quality_options(formats)
+                available_qualities = quality_options['available_qualities']
+                default_quality = quality_options['default_quality']
+                quality_labels = quality_options['quality_labels']
+                all_sizes = self._estimate_bilibili_quality_sizes(formats)
+                quality_sizes = {
+                    quality: all_sizes.get(quality, 0)
+                    for quality in available_qualities
+                }
+                quality_sizes_readable = {
+                    quality: self._format_filesize(size)
+                    for quality, size in quality_sizes.items()
+                }
+                # 默认展示体积跟默认清晰度档对齐
+                if default_quality and quality_sizes.get(default_quality):
+                    filesize = quality_sizes[default_quality]
+
+            video_info = {
+                'title': title,
+                'url': download_url,
+                'page_url': page_url,
+                'size': filesize,
+                'size_readable': self._format_filesize(filesize),
+                'duration': int(duration) if duration else 0,
+                'duration_readable': self._format_duration(int(duration) if duration else 0),
+                'thumbnail': thumbnail,
+                'platform': platform,
+                'ext': ext,
+                'is_dash': is_dash
+            }
+            if quality_sizes is not None:
+                video_info['quality_sizes'] = quality_sizes
+                video_info['quality_sizes_readable'] = quality_sizes_readable
+                video_info['available_qualities'] = available_qualities
+                video_info['default_quality'] = default_quality
+                video_info['quality_labels'] = quality_labels
+
             return {
                 'success': True,
                 'message': '解析成功',
-                'video_info': {
-                    'title': title,
-                    'url': download_url,
-                    'page_url': page_url,
-                    'size': filesize,
-                    'size_readable': self._format_filesize(filesize),
-                    'duration': int(duration) if duration else 0,
-                    'duration_readable': self._format_duration(int(duration) if duration else 0),
-                    'thumbnail': thumbnail,
-                    'platform': platform,
-                    'ext': ext,
-                    'is_dash': is_dash
-                }
+                'video_info': video_info
             }
         except subprocess.TimeoutExpired:
             return {
@@ -979,6 +1019,89 @@ class VideoDownloader:
             filename = filename[:200]
         filename = filename.strip()
         return filename or '未命名视频'
+
+    def _estimate_bilibili_quality_sizes(self, formats: List[Dict]) -> Dict[str, int]:
+        """按 360/720/1080 三档估算 B站体积（字节）。
+
+        与实际下载选择器 `bv*[height<=X]+ba/b[height<=X]/bv*+ba/b` 对齐：
+        每档取"不超过该分辨率的最大体积视频流"+"体积最大的音频流"；
+        某档没有对应分辨率时，回退到全部视频流里体积最大的那个（与选择器的 `/bv*+ba` 回退一致）。
+        """
+        video_only = []
+        audio_only = []
+        for fmt in formats or []:
+            fmt_size = fmt.get('filesize') or fmt.get('filesize_approx') or 0
+            if not fmt_size:
+                continue
+            vcodec = fmt.get('vcodec') or 'none'
+            acodec = fmt.get('acodec') or 'none'
+            if vcodec != 'none' and acodec == 'none':
+                video_only.append((fmt.get('height') or 0, fmt_size))
+            elif acodec != 'none' and vcodec == 'none':
+                audio_only.append(fmt_size)
+
+        best_audio = max(audio_only, default=0)
+        overall_best_video = max((size for _, size in video_only), default=0)
+
+        sizes: Dict[str, int] = {}
+        for quality in ('360', '720', '1080'):
+            height_cap = int(quality)
+            capped = [size for height, size in video_only if 0 < height <= height_cap]
+            video_size = max(capped, default=overall_best_video)
+            sizes[quality] = video_size + best_audio if video_size else 0
+        return sizes
+
+    def _bilibili_quality_options(self, formats: List[Dict]) -> Dict[str, object]:
+        """根据真实存在的分辨率，决定清晰度下拉该显示哪几档。
+
+        规则（避免「选了 1080 实际只有 480」的误解）：
+        - 360：存在 1–360p 画面
+        - 720：存在 361–720p；若最高不足 720，标签改成「{真实高度}p · 最高」
+        - 1080：存在 721p 及以上；若最高不足 1080，标签同样改为真实高度
+        """
+        heights = []
+        for fmt in formats or []:
+            vcodec = fmt.get('vcodec') or 'none'
+            acodec = fmt.get('acodec') or 'none'
+            height = fmt.get('height') or 0
+            if vcodec != 'none' and acodec == 'none' and height > 0:
+                heights.append(int(height))
+
+        bands = (
+            ('360', 1, 360, 360),
+            ('720', 361, 720, 720),
+            ('1080', 721, 4320, 1080),
+        )
+        available = []
+        labels = {}
+        for key, low, high, named in bands:
+            in_band = [height for height in heights if low <= height <= high]
+            if not in_band:
+                continue
+            available.append(key)
+            band_max = max(in_band)
+            if band_max < named:
+                labels[key] = f'{band_max}p · 最高'
+
+        if not available and heights:
+            max_height = max(heights)
+            if max_height <= 360:
+                available = ['360']
+            elif max_height <= 720:
+                available = ['720']
+                if max_height < 720:
+                    labels['720'] = f'{max_height}p · 最高'
+            else:
+                available = ['1080']
+                if max_height < 1080:
+                    labels['1080'] = f'{max_height}p · 最高'
+
+        default_quality = available[-1] if available else '720'
+        return {
+            'available_qualities': available,
+            'default_quality': default_quality,
+            'quality_labels': labels,
+        }
 
     def _format_filesize(self, size: int) -> str:
         if not size or size <= 0:

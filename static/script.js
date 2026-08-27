@@ -616,6 +616,25 @@ function handleDownload() {
     startBrowserDownload(proxyUrl, filename, false);
 }
 
+function reportWebDownload(platform, event) {
+    // 浏览器直连 CDN 的下载服务器看不见，完成后回报一笔；上报失败不影响下载
+    try {
+        const payload = JSON.stringify({ platform, event });
+        if (navigator.sendBeacon) {
+            navigator.sendBeacon('/track-download', new Blob([payload], { type: 'application/json' }));
+        } else {
+            fetch('/track-download', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: payload,
+                keepalive: true,
+            });
+        }
+    } catch (error) {
+        // 统计不重要到值得打扰用户
+    }
+}
+
 async function startXiaohongshuCdnDownload(directUrl, filename) {
     setDownloadingState(true);
     clearError();
@@ -635,7 +654,9 @@ async function startXiaohongshuCdnDownload(directUrl, filename) {
         const blobUrl = URL.createObjectURL(blob);
         startBrowserDownload(blobUrl, filename, false);
         setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+        reportWebDownload('xiaohongshu', 'success');
     } catch (error) {
+        // 直连失败走服务器代理，那条链路由服务器自己记账，这里不重复上报
         const proxyUrl = `/proxy-download?video_url=${encodeURIComponent(directUrl)}&filename=${encodeURIComponent(filename)}&is_dash=false`;
         startBrowserDownload(proxyUrl, filename, false);
     }

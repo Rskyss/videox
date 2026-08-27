@@ -559,6 +559,38 @@ def _run_youtube_download_job(job_id: str) -> None:
     _run_download_job(job_id)
 
 
+def _platform_from_media_url(video_url: str) -> str:
+    """从媒体直链域名识别平台（douyinvod.com → douyin 等），认不出返回空。"""
+    hostname = urlparse(video_url).hostname or ''
+    for platform, domains in PLATFORM_MEDIA_DOMAINS.items():
+        if _host_matches_domains(hostname, domains):
+            return platform
+    return ''
+
+
+def _track_web_download(platform: str, succeeded: bool) -> None:
+    """网页版下载结束时记一笔成功/失败；统计失败绝不影响下载本身。"""
+    if not platform:
+        return
+    try:
+        tracker.track(platform, 'success' if succeeded else 'fail')
+    except Exception:
+        pass
+
+
+def _run_download_job_with_stats(job_id: str) -> None:
+    """执行下载任务，结束后按最终状态记一笔下载成功/失败。"""
+    _run_download_job(job_id)
+    with download_jobs_lock:
+        job = download_jobs.get(job_id)
+        status = job.get('status') if job else None
+        platform = job.get('platform') if job else None
+    if status == 'ready':
+        _track_web_download(platform, True)
+    elif status == 'error':
+        _track_web_download(platform, False)
+
+
 download_job_cleanup_thread = threading.Thread(
     target=_download_job_cleanup_loop,
     name='videox-download-cleanup',
@@ -739,13 +771,8 @@ def download_video():
     result = downloader.download(url, directory, cookies_from_browser)
 
     if result['success']:
-        # 统计下载
-        try:
-            platform = detect_platform(url)
-            if platform:
-                tracker.track(platform)
-        except:
-            pass
+        # 旧接口完成的是一次完整下载，记入下载成功（不再混入解析计数）
+        _track_web_download(detect_platform(url), True)
         return jsonify(result)
     else:
         return jsonify(result), 400
@@ -975,6 +1002,18 @@ def proxy_download():
         }), 500
 
 
+@app.route('/track-download', methods=['POST'])
+def track_download_event():
+    """前端直连 CDN 下载（小红书）完成后的记账上报；只接受白名单取值。"""
+    data = request.get_json(silent=True) or {}
+    platform = str(data.get('platform') or '').lower()
+    event = str(data.get('event') or '')
+    if platform not in SUPPORTED_DOWNLOAD_PLATFORMS or event not in ('success', 'fail'):
+        return jsonify({'success': False, 'message': 'Invalid tracking payload'}), 400
+    _track_web_download(platform, event == 'success')
+    return ('', 204)
+
+
 @app.route('/download-jobs', methods=['POST'])
 def create_download_job():
     """为所有支持的平台创建统一后台下载任务。"""
@@ -1043,7 +1082,7 @@ def create_download_job():
         }
 
     worker = threading.Thread(
-        target=_run_download_job,
+        target=_run_download_job_with_stats,
         args=(job_id,),
         name=f'videox-download-{job_id[:8]}',
         daemon=True,
@@ -1181,15 +1220,20 @@ def proxy_direct_download(video_url: str, filename: str):
         content_length = resp.headers.get('Content-Length')
         
         # 生成响应
+        stats_platform = _platform_from_media_url(video_url)
+
         def generate():
-            """流式传输视频数据"""
+            """流式传输视频数据；传输完整记一笔下载成功，上游中断记失败。"""
             try:
                 for chunk in resp.iter_content(chunk_size=DIRECT_DOWNLOAD_CHUNK_SIZE):
                     if chunk:
                         yield chunk
+                _track_web_download(stats_platform, True)
             except Exception as e:
                 # CDN连接中断时捕获异常，防止Flask进程崩溃
+                # （用户自己取消属于 GeneratorExit，不入账）
                 app.logger.error(f"流式传输中断: {e}")
+                _track_web_download(stats_platform, False)
             finally:
                 resp.close()
         
@@ -1213,6 +1257,7 @@ def proxy_direct_download(video_url: str, filename: str):
         return response
         
     except requests.RequestException as e:
+        _track_web_download(_platform_from_media_url(video_url), False)
         return jsonify({
             'success': False,
             'message': 'Download failed',
@@ -1359,6 +1404,21 @@ def _resumable_douyin_download(video_url: str, filename: str, headers, cookies):
             response.close()
             session.close()
 
+    def generate_with_stats():
+        """传输完整记一笔下载成功，重连仍失败记失败；用户自己取消不入账。"""
+        completed = False
+        try:
+            yield from generate()
+            completed = True
+        except GeneratorExit:
+            raise
+        except Exception:
+            _track_web_download('douyin', False)
+            raise
+        finally:
+            if completed:
+                _track_web_download('douyin', True)
+
     encoded_filename = quote(filename)
     response_headers = {
         'Content-Disposition': f"attachment; filename*=UTF-8''{encoded_filename}",
@@ -1369,7 +1429,7 @@ def _resumable_douyin_download(video_url: str, filename: str, headers, cookies):
         response_headers['Content-Length'] = str(total_size)
 
     return Response(
-        stream_with_context(generate()),
+        stream_with_context(generate_with_stats()),
         mimetype='video/mp4',
         headers=response_headers,
     )
@@ -1377,6 +1437,7 @@ def _resumable_douyin_download(video_url: str, filename: str, headers, cookies):
 
 def download_with_ytdlp(video_url: str, filename: str, quality: str = '720'):
     """使用yt-dlp下载（用于DASH/HLS格式，自动合并视频和音频）"""
+    stats_platform = detect_platform(video_url) or _platform_from_media_url(video_url)
     try:
         temp_dir = tempfile.gettempdir()
         safe_filename = f"dl_{int(time.time())}_{os.getpid()}"
@@ -1493,10 +1554,13 @@ def download_with_ytdlp(video_url: str, filename: str, quality: str = '720'):
         
         # 获取文件大小
         file_size = os.path.getsize(temp_file)
-        
+
+        # 服务器已完成下载与合并，可供取件——口径与后台任务的 ready 一致
+        _track_web_download(stats_platform, True)
+
         # 对文件名进行URL编码
         encoded_filename = quote(filename)
-        
+
         # 设置响应头
         response = Response(
             stream_with_context(generate()),
@@ -1508,10 +1572,11 @@ def download_with_ytdlp(video_url: str, filename: str, quality: str = '720'):
                 'Cache-Control': 'no-cache',
             }
         )
-        
+
         return response
-        
+
     except subprocess.TimeoutExpired:
+        _track_web_download(stats_platform, False)
         return jsonify({
             'success': False,
             'message': 'Download timeout',
@@ -1523,6 +1588,7 @@ def download_with_ytdlp(video_url: str, filename: str, quality: str = '720'):
         app.logger.error(f"DASH下载失败: {error_detail}")
         sys.stderr.write(f"[ERROR] DASH下载失败:\n{error_detail}\n")
         sys.stderr.flush()
+        _track_web_download(stats_platform, False)
         return jsonify({
             'success': False,
             'message': 'Download failed',

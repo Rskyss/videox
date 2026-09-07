@@ -494,6 +494,41 @@ class DownloadJobTestCase(unittest.TestCase):
         self.assertIn('网络连接不稳定', parsed)
         self.assertNotIn('_ssl.c:1010', parsed)
 
+    def test_detect_platform_recognizes_twitter_media_cdn(self):
+        self.assertEqual(
+            app_module.detect_platform('https://video.twimg.com/ext_tw_video/1.mp4'),
+            'twitter',
+        )
+        self.assertEqual(
+            app_module._normalize_download_platform(
+                'https://video.twimg.com/ext_tw_video/1.mp4',
+                'Twitter/X',
+            ),
+            'twitter',
+        )
+
+    def test_twitter_download_command_prefers_http_progressive(self):
+        command = app_module._platform_download_command(
+            {
+                'url': 'https://x.com/test/status/123',
+                'platform': 'twitter',
+                'quality': 'best',
+            },
+            '/tmp/test-twitter',
+        )
+        selector = command[command.index('-f') + 1]
+        self.assertEqual(selector, app_module.TWITTER_FORMAT_SELECTOR)
+        self.assertIn('twitter:multiple_video=1', command)
+
+    def test_parse_error_explains_twitter_no_video_or_login(self):
+        parsed = app_module.downloader._parse_error(
+            'ERROR: [twitter] 123: No video could be found in this tweet'
+        )
+        self.assertIn('没有可下载的视频', parsed)
+        self.assertIn('登录', parsed)
+        self.assertNotIn('cookies.txt', parsed)
+        self.assertNotIn('ERROR: [twitter]', parsed)
+
     def test_impersonate_dependency_error_does_not_expose_traceback(self):
         parsed = app_module.downloader._parse_error(
             'Traceback (most recent call last):\n'

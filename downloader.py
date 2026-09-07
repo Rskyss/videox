@@ -33,6 +33,8 @@ def get_ytdlp_command():
     return 'yt-dlp'
 
 YTDLP_CMD = get_ytdlp_command()
+# Twitter/X：优先 http(s) 渐进式 mp4，避免默认走到 HLS 多分片
+TWITTER_FORMAT_SELECTOR = 'best[protocol^=http][protocol!*=m3u8]/best'
 
 from utils import (
     is_twitter_url,
@@ -185,6 +187,7 @@ class VideoDownloader:
             cmd.extend(["--cookies", local_cookie])
         if is_twitter_url(url):
             cmd.extend(["--extractor-args", "twitter:multiple_video=1"])
+            cmd.extend(["-f", TWITTER_FORMAT_SELECTOR])
         try:
             result = subprocess.run(
                 cmd,
@@ -340,7 +343,10 @@ class VideoDownloader:
             'unavailable': '视频不可用',
             'unsupported': '不支持的网站或视频格式',
             'no video formats found': '未找到可下载的视频格式（可能是图文笔记或链接无效）',
-            'no video could be found': '该推文中未找到视频',
+            'no video could be found': (
+                '这条推文里没有可下载的视频。'
+                '若浏览器能正常播放，多半是登录可见内容，网页版暂不支持这类推文'
+            ),
         }
         for pattern, message in error_patterns.items():
             if pattern in error_lower:
@@ -430,6 +436,7 @@ class VideoDownloader:
                 cmd.extend(["--cookies", local_cookie])
             if is_twitter_url(url):
                 cmd.extend(["--extractor-args", "twitter:multiple_video=1"])
+                cmd.extend(["-f", TWITTER_FORMAT_SELECTOR])
 
             try:
                 process = subprocess.Popen(
@@ -850,7 +857,7 @@ class VideoDownloader:
                 if is_twitter_url(url):
                     cmd.extend(["--extractor-args", "twitter:multiple_video=1"])
                     # Twitter 优先选 http 直链 mp4，避免 HLS 多分片合并
-                    cmd.extend(["-f", "best[protocol^=http][protocol!*=m3u8]/best"])
+                    cmd.extend(["-f", TWITTER_FORMAT_SELECTOR])
                 cmd.append(url)
 
                 result = subprocess.run(

@@ -118,7 +118,12 @@ def is_twitter_url(url: str) -> bool:
     Returns:
         bool: True表示是Twitter链接
     """
-    return "x.com" in url.lower() or "twitter.com" in url.lower()
+    url_lower = url.lower()
+    return (
+        'x.com' in url_lower
+        or 'twitter.com' in url_lower
+        or 'twimg.com' in url_lower
+    )
 
 
 # 已知视频平台列表（用于智能URL提取）
@@ -129,7 +134,7 @@ KNOWN_PLATFORMS = [
     'tiktok.com',
     'bilibili.com', 'b23.tv',
     'youtube.com', 'youtu.be',
-    'x.com', 'twitter.com',
+    'x.com', 'twitter.com', 'twimg.com',
     'kuaishou.com',
 ]
 
@@ -226,7 +231,11 @@ def get_platform_name(url: str) -> str:
         return 'B站'
     elif 'youtube.com' in url_lower or 'youtu.be' in url_lower:
         return 'YouTube'
-    elif 'x.com' in url_lower or 'twitter.com' in url_lower:
+    elif (
+        'x.com' in url_lower
+        or 'twitter.com' in url_lower
+        or 'twimg.com' in url_lower
+    ):
         return 'Twitter/X'
     elif 'kuaishou.com' in url_lower:
         return '快手'

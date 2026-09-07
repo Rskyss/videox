@@ -27,6 +27,7 @@ from simple_tracker import tracker
 from downloader import (
     VideoDownloader,
     YTDLP_CMD,
+    TWITTER_FORMAT_SELECTOR,
     sanitize_sensitive_output,
     ytdlp_subprocess_env,
 )
@@ -56,6 +57,8 @@ BILIBILI_QUALITY_SELECTORS = {
     '720': 'bv*[height<=720]+ba/b[height<=720]/bv*+ba/b',
     '1080': 'bv*[height<=1080]+ba/b[height<=1080]/bv*+ba/b',
 }
+# 与解析阶段一致：Twitter 优先 http(s) 直链 mp4
+# TWITTER_FORMAT_SELECTOR 从 downloader 导入，避免两处漂移
 SUPPORTED_DOWNLOAD_PLATFORMS = {
     'douyin', 'bilibili', 'xiaohongshu', 'youtube', 'tiktok', 'twitter',
 }
@@ -226,6 +229,14 @@ def _platform_download_command(job, output_base: str, proxy=None, client=None):
     # B站 CDN 对多连接更敏感，并发分片容易在音频流阶段触发 SSL 中断；降到 1 更稳。
     # 部分网络环境下 IPv6 握手会长时间卡住，进度一直停在 0%，强制 IPv4。
     concurrent_fragments = '1' if platform == 'bilibili' else '4'
+    if platform == 'bilibili':
+        format_selector = BILIBILI_QUALITY_SELECTORS.get(
+            quality, BILIBILI_QUALITY_SELECTORS['720']
+        )
+    elif platform == 'twitter':
+        format_selector = TWITTER_FORMAT_SELECTOR
+    else:
+        format_selector = 'bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/bv*+ba/b'
     cmd = [
         YTDLP_CMD,
         source_url,
@@ -235,11 +246,7 @@ def _platform_download_command(job, output_base: str, proxy=None, client=None):
         '--progress',
         '--concurrent-fragments', concurrent_fragments,
         *RESILIENT_RETRY_ARGS,
-        '-f', (
-            BILIBILI_QUALITY_SELECTORS.get(quality, BILIBILI_QUALITY_SELECTORS['720'])
-            if platform == 'bilibili'
-            else 'bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/bv*+ba/b'
-        ),
+        '-f', format_selector,
         '-o', f'{output_base}.%(ext)s',
         '--merge-output-format', 'mp4',
     ]
@@ -644,7 +651,11 @@ def detect_platform(url):
         return "douyin"
     elif "xiaohongshu.com" in url_lower or "xhslink.com" in url_lower:
         return "xiaohongshu"
-    elif "twitter.com" in url_lower or "x.com" in url_lower:
+    elif (
+        "twitter.com" in url_lower
+        or "x.com" in url_lower
+        or "twimg.com" in url_lower
+    ):
         return "twitter"
     elif "tiktok.com" in url_lower:
         return "tiktok"
@@ -1446,7 +1457,11 @@ def download_with_ytdlp(video_url: str, filename: str, quality: str = '720'):
         url_lower = video_url.lower()
         is_youtube = 'youtube.com' in url_lower or 'youtu.be' in url_lower
         is_bilibili = 'bilibili.com' in url_lower or 'b23.tv' in url_lower
-        is_twitter = 'twitter.com' in url_lower or 'x.com' in url_lower
+        is_twitter = (
+            'twitter.com' in url_lower
+            or 'x.com' in url_lower
+            or 'twimg.com' in url_lower
+        )
         youtube_attempts = downloader.proxy_manager.get_proxies()[:3] + [None] if is_youtube else [None]
         max_retries = len(youtube_attempts)
         result = None
@@ -1478,6 +1493,7 @@ def download_with_ytdlp(video_url: str, filename: str, quality: str = '720'):
 
             if is_twitter:
                 cmd.extend(["--extractor-args", "twitter:multiple_video=1"])
+                cmd.extend(["-f", TWITTER_FORMAT_SELECTOR])
 
             cookie_file = downloader.local_cookie_file
             if cookie_file and os.path.exists(str(cookie_file)) and not is_twitter:

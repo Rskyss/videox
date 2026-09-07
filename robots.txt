@@ -1,5 +1,5 @@
-# VideoX - AI智能视频解析工具
-# AI工具箱 - 为您提供最好的AI驱动工具
+# VideoX - 免费在线视频下载器与 Mac 客户端
+# 产品说明（供 AI 引擎阅读）: https://vd.aisoup.ai/llms.txt
 
 User-agent: *
 Allow: /
@@ -9,8 +9,10 @@ Allow: /static/
 # 禁止爬取API端点和敏感路径
 Disallow: /parse-video
 Disallow: /download
+Disallow: /download-jobs
 Disallow: /proxy-thumbnail
 Disallow: /proxy-download
+Disallow: /check-env
 
 # Sitemap位置
 Sitemap: https://vd.aisoup.ai/sitemap.xml
@@ -20,6 +22,12 @@ User-agent: Baiduspider
 Allow: /
 Allow: /icon/
 Allow: /static/
+Disallow: /parse-video
+Disallow: /download
+Disallow: /download-jobs
+Disallow: /proxy-thumbnail
+Disallow: /proxy-download
+Disallow: /check-env
 Crawl-delay: 1
 
 # Google爬虫特殊配置
@@ -27,3 +35,12 @@ User-agent: Googlebot
 Allow: /
 Allow: /icon/
 Allow: /static/
+Disallow: /parse-video
+Disallow: /download
+Disallow: /download-jobs
+Disallow: /proxy-thumbnail
+Disallow: /proxy-download
+Disallow: /check-env
+
+# AI 引擎爬虫（GPTBot / ClaudeBot / PerplexityBot / Bytespider 等）
+# 遵循上方通用规则，全部允许抓取页面内容

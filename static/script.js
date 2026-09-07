@@ -1,6 +1,6 @@
 const translations = {
     zh: {
-        'page-title': '视频解析神器 - 免费无水印视频解析下载工具',
+        'page-title': 'VideoX – 免费在线视频下载 · Mac 客户端｜B站 抖音 小红书',
         'title': '把视频存到你自己手里',
         'subtitle': '粘贴链接就能下。要更快、能批量、断了能接上，就装 Mac 客户端。',
         'input-placeholder': '粘贴视频链接或分享文案',
@@ -73,7 +73,7 @@ const translations = {
         'faq-a5': '客户端暂时只有 Apple Silicon（M1 及以后）的版本。Intel Mac 和 Windows 用户可以用网页版，功能一样，画质一样。'
     },
     en: {
-        'page-title': 'Free Video Downloader – TikTok, Douyin, Bilibili | VideoX',
+        'page-title': 'Free Video Downloader & Mac App – TikTok, Douyin | VideoX',
         'title': 'Keep your videos on your own drive',
         'subtitle': 'Paste a link and download. Want it faster, in batches, resumable? Get the Mac app.',
         'input-placeholder': 'Paste a video link or shared text',
@@ -616,6 +616,25 @@ function handleDownload() {
     startBrowserDownload(proxyUrl, filename, false);
 }
 
+function reportWebDownload(platform, event) {
+    // 浏览器直连 CDN 的下载服务器看不见，完成后回报一笔；上报失败不影响下载
+    try {
+        const payload = JSON.stringify({ platform, event });
+        if (navigator.sendBeacon) {
+            navigator.sendBeacon('/track-download', new Blob([payload], { type: 'application/json' }));
+        } else {
+            fetch('/track-download', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: payload,
+                keepalive: true,
+            });
+        }
+    } catch (error) {
+        // 统计不重要到值得打扰用户
+    }
+}
+
 async function startXiaohongshuCdnDownload(directUrl, filename) {
     setDownloadingState(true);
     clearError();
@@ -635,7 +654,9 @@ async function startXiaohongshuCdnDownload(directUrl, filename) {
         const blobUrl = URL.createObjectURL(blob);
         startBrowserDownload(blobUrl, filename, false);
         setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+        reportWebDownload('xiaohongshu', 'success');
     } catch (error) {
+        // 直连失败走服务器代理，那条链路由服务器自己记账，这里不重复上报
         const proxyUrl = `/proxy-download?video_url=${encodeURIComponent(directUrl)}&filename=${encodeURIComponent(filename)}&is_dash=false`;
         startBrowserDownload(proxyUrl, filename, false);
     }

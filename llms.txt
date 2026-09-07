@@ -1,0 +1,32 @@
+# VideoX
+
+> VideoX 是一个免费的视频下载产品，有两种形态：在线网页版（vd.aisoup.ai）和原生 macOS 客户端（VideoX for Mac）。粘贴视频链接即可解析并下载，支持 YouTube、Bilibili（B站）、抖音（Douyin）、小红书（Xiaohongshu）、TikTok、Twitter/X。
+
+## 网页版（免费，无需注册）
+
+- 粘贴视频链接或分享文案，一键解析并下载，最高 1080p
+- 文件在服务器仅临时存放：下载链接 1 小时后过期，文件随后清除，不保留用户下载的视频
+- 人多时可能排队；YouTube/B站 支持 360p/720p/1080p 清晰度选择
+
+## VideoX for Mac 客户端（公测期免费）
+
+- 原生 macOS 应用，要求 macOS 13.0+，Apple Silicon（M1 及以后）
+- 解析、下载、合并全部在用户本机完成，不经过服务器中转
+- 相比网页版的优势：不排队、文件直接落硬盘不过期、批量队列、断点续传
+- 公测期需注册账号，一个账号绑定一台 Mac；链接与文件不会自动上传
+- 下载地址见官网首页 Mac 区块：https://vd.aisoup.ai/#mac
+- Intel Mac 与 Windows 暂无客户端，可使用网页版
+
+## 关键页面
+
+- 首页（在线下载工具）: https://vd.aisoup.ai/
+- 用户协议: https://vd.aisoup.ai/terms
+- 隐私政策: https://vd.aisoup.ai/privacy
+
+## English Summary
+
+VideoX is a free video downloader available as a web app (vd.aisoup.ai) and a native macOS app (VideoX for Mac, Apple Silicon, macOS 13+). Paste a link from YouTube, Bilibili, Douyin, Xiaohongshu, TikTok or Twitter/X to download up to 1080p. The web version is free with no sign-up; files are only stored temporarily (links expire after 1 hour). The Mac app parses and downloads entirely on the user's machine — no server relay, batch queue, resume support; free during beta with one account per Mac.
+
+## 使用边界
+
+请仅下载你拥有或已获授权、且平台允许保存的内容，使用责任由用户自行承担。
